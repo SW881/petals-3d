@@ -3,10 +3,11 @@
     "private": true,
     "version": "1.0.0",
     "type": "module",
+    "license": "",
     "scripts": {
         "dev": "vite --port 3000",
         "build": "vite build",
-        "preview": "vite preview --port 4173",
+        "preview": "vite preview --port 5000",
         "lint": "eslint . --ext js,jsx,ts,tsx",
         "start": "npm run preview"
     },
