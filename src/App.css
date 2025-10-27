@@ -1,0 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Funnel+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+@import 'tailwindcss';
+/* @tailwind base;
+@tailwind components;
+@tailwind utilities; */
+
+@layer utilities {
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @keyframes fade-out {
+        from {
+            opacity: 1;
+            transform: scale(1);
+        }
+        to {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+    }
+
+    .animate-fade-in {
+        animation: fade-in 0.2s ease-out forwards;
+    }
+
+    .animate-fade-out {
+        animation: fade-out 0.2s ease-in forwards;
+    }
+}
+
+#root {
+    margin: 0%;
+    padding: 0%;
+    background-color: #ffffff;
+}
+
+.prevent-select {
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE 10 and IE 11 */
+    user-select: none; /* Standard syntax */
+}
+
+/* Fonts */
+.funnel-sans-regular {
+    font-family: 'Funnel Sans', sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+}
+
+.funnel-sans-semibold {
+    font-family: 'Funnel Sans', sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-style: normal;
+}
+
+.funnel-sans-bold {
+    font-family: 'Funnel Sans', sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 700;
+    font-style: normal;
+}
+
+/* Custom scrollbar to hide it */
+.custom-scrollbar::-webkit-scrollbar {
+    display: none; /* For Chrome, Safari, and Opera */
+}
+
+.custom-scrollbar {
+    -ms-overflow-style: none; /* For Internet Explorer and Edge */
+    scrollbar-width: none; /* For Firefox */
+}
+
+.range-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    height: 100%;
+}
+
+.range-wrapper {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+input[type='range'] {
+    -webkit-appearance: none;
+    background: #a7a7a7;
+    height: 5px;
+    border-radius: 50px;
+    background-image: linear-gradient(#00a36c, #00a36c);
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    cursor: pointer;
+    width: 200px;
+}
+
+input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    background-color: #ffffff;
+    border-radius: 50%;
+}
+
+input[type='range']::-moz-range-thumb {
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    background-color: #d5d4d8;
+    border: none;
+    border-radius: 50%;
+}
+
+/* Hide default spinner buttons for Webkit browsers (Chrome, Safari, Edge) */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Hide default spinner buttons for Firefox */
+input[type='number'] {
+    -moz-appearance: textfield;
+}
