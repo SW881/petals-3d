@@ -167,7 +167,7 @@ const SignIn = () => {
             <div className="flex flex-col justify-center items-center">
                 <div className="flex justify-center items-center gap-[8px] m-[32px] funnel-sans-bold text-[24px]">
                     <Petals3DIcon size={32} />
-                    <div>Petals 3</div>
+                    <div>Petals Whitebox</div>
                 </div>
                 <div className="flex flex-col justify-center items-center overflow-y-auto custom-scrollbar m-[12px]">
                     <div className="flex items-center justify-center funnel-sans-regular">
