@@ -22,7 +22,7 @@ export const saveSceneLinesToIndexDB = async (lineData, id) => {
         // console.log('✅ Saved line data from IndexedDB:', lineJson)
         return true
     } catch (err) {
-        console.error('❌ Failed to save line data from IndexedDB', err)
+        // console.error('❌ Failed to save line data from IndexedDB', err)
         return false
     }
 }
@@ -31,10 +31,10 @@ export const saveGroupToIndexDB = async (groupData, id) => {
     try {
         const sceneKey = `groups-draft-note-${id}`
         await set(sceneKey, groupData, linesStore)
-        console.log('Saved Group ...')
+        // console.log('Saved Group ...')
         return true
     } catch (err) {
-        console.log('Failed to save Group ...')
+        // console.log('Failed to save Group ...')
         return false
     }
 }
@@ -47,7 +47,7 @@ export const clearSceneFromIndexedDB = async (id) => {
         await del(lineSceneKey, linesStore)
         await del(groupSceneKey, linesStore)
 
-        console.log('🧹 Scene cleared from IndexedDB')
+        // console.log('🧹 Scene cleared from IndexedDB')
     } catch (err) {
         console.error('❌ Failed to clear scene from IndexedDB', err)
     }
@@ -61,10 +61,10 @@ export const loadSceneFromIndexedDB = async (id) => {
         const lineData = await get(lines, linesStore)
         const groupData = await get(groups, linesStore)
 
-        console.log({ groupData })
+        // console.log({ groupData })
         if (groupData || lineData) {
-            console.log('✅ Loaded lines data from IndexedDB:', lineData)
-            console.log('✅ Loaded groups data from IndexedDB:', groupData)
+            // console.log('✅ Loaded lines data from IndexedDB:', lineData)
+            // console.log('✅ Loaded groups data from IndexedDB:', groupData)
 
             return {
                 lineData,
@@ -73,11 +73,11 @@ export const loadSceneFromIndexedDB = async (id) => {
                 error: 'Loaded scene from IndexedDB',
             }
         } else {
-            console.log('ℹ️ No saved scene found.')
+            // console.log('ℹ️ No saved scene found.')
             return { success: false, error: 'No saved scene found' }
         }
     } catch (err) {
-        console.error('❌ Failed to load from IndexedDB', err)
+        // console.error('❌ Failed to load from IndexedDB', err)
         return { success: false, error: 'Failed to load from IndexedDB' }
     }
 }

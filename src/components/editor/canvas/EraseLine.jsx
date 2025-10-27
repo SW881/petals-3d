@@ -27,7 +27,7 @@ const EraseLine = ({ id }) => {
             const onPointerUp = () => {
                 setDragging(false)
 
-                console.log('Deleteing Objects...')
+                // console.log('Deleteing Objects...')
                 highlighted.current.forEach((obj) => {
                     if (obj.parent) {
                         obj.parent.remove(obj)

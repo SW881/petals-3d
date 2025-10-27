@@ -53,7 +53,7 @@ const CopyGroups = () => {
             //     handleClose()
             // }
         } catch (error) {
-            console.error(error)
+            // console.error(error)
             // setError(error.message)
         } finally {
             setLoading(false)

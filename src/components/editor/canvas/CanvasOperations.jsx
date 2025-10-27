@@ -62,7 +62,7 @@ export default function CanvasOperations({ id }) {
             })
             meshes.forEach((mesh) => {
                 scene.remove(mesh)
-                console.log('Mesh: ', mesh)
+                // console.log('Mesh: ', mesh)
                 mesh.geometry.dispose()
                 if (Array.isArray(mesh.material)) {
                     mesh.material.forEach((mat) => {

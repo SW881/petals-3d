@@ -25,7 +25,7 @@ export const AuthContextProvider = ({ children }) => {
             setSession(result.data.user)
             return { success: true, session }
         } catch (error) {
-            console.error('Failed to fetch session:', error)
+            // console.error('Failed to fetch session:', error)
             setSession(null)
             return { success: false, session }
         } finally {
@@ -47,7 +47,7 @@ export const AuthContextProvider = ({ children }) => {
             })
 
             if (error) {
-                console.error('Error while signing up : ', error)
+                // console.error('Error while signing up : ', error)
                 return { success: false, error }
             } else {
                 if (data?.session) {
@@ -73,7 +73,7 @@ export const AuthContextProvider = ({ children }) => {
                 return { success: true, data: data }
             }
         } catch (error) {
-            console.error('Error occured while signing up+ : ', error)
+            // console.error('Error occured while signing up+ : ', error)
             return { success: false, error: error.message }
         }
     }
@@ -90,17 +90,17 @@ export const AuthContextProvider = ({ children }) => {
             if (result.data.success) {
                 const { error } = await supabase.auth.signOut()
                 if (error) {
-                    console.error('Error while signing out : ', error)
+                    // console.error('Error while signing out : ', error)
                     return { success: false, error }
                 } else {
                     return { success: true }
                 }
             } else {
-                console.error('Error while signing out : ', error)
+                // console.error('Error while signing out : ', error)
                 return { success: false, error }
             }
         } catch (error) {
-            console.error('Error while signing out : ', error)
+            // console.error('Error while signing out : ', error)
             return { success: false, error }
         }
     }
@@ -114,7 +114,7 @@ export const AuthContextProvider = ({ children }) => {
             })
 
             if (error) {
-                console.error('Error while signing in : ', error)
+                // console.error('Error while signing in : ', error)
                 return { success: false, error }
             } else {
                 // console.log('Succesfully signed in user : ', data)
@@ -144,7 +144,7 @@ export const AuthContextProvider = ({ children }) => {
                 return { success: true, data }
             }
         } catch (error) {
-            console.error('Error occured while signing in : ', error)
+            // console.error('Error occured while signing in : ', error)
             return { success: false, error: error.message }
         } finally {
             setLoading(false)
@@ -158,7 +158,7 @@ export const AuthContextProvider = ({ children }) => {
             })
 
             if (error) {
-                console.error('Error while fetching authentication : ', error)
+                // console.error('Error while fetching authentication : ', error)
                 return { success: false, error }
             } else {
                 // console.log('Succesfully fetched authentication : ', data)

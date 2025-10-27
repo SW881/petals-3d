@@ -37,7 +37,7 @@ const SignIn = () => {
     const handleSignIn = async (e) => {
         e.preventDefault()
         setLoading(true)
-        console.log('Signing In...')
+        // console.log('Signing In...')
 
         if (
             !formError.emailError &&
@@ -56,10 +56,10 @@ const SignIn = () => {
                     setSignInError(
                         `Error while sign in : ${result.error.message}`
                     )
-                    console.log(result.error.message)
+                    // console.log(result.error.message)
                 }
             } catch (error) {
-                console.error('Error while sign in : ', error)
+                // console.error('Error while sign in : ', error)
                 setSignInError('Error while sign in')
             } finally {
                 setLoading(false)
@@ -77,7 +77,7 @@ const SignIn = () => {
         })
 
         if (e.target.value.length <= 0) {
-            console.log('e.target.value.length : ', e.target.value.length)
+            // console.log('e.target.value.length : ', e.target.value.length)
             setFormError({
                 ...formError,
                 emailError: 'Email is required',

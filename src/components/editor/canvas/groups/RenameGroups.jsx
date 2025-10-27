@@ -36,7 +36,7 @@ const RenameGroups = () => {
             updateGroupNamesFromSelected(groupName)
 
             const updatedGroups = drawStore.getState().groupData
-            console.log('Updated groups  : ', updatedGroups)
+            // console.log('Updated groups  : ', updatedGroups)
 
             const response = await saveGroupToIndexDB(updatedGroups, id)
 
@@ -47,7 +47,7 @@ const RenameGroups = () => {
                 handleClose()
             }
         } catch (error) {
-            console.error(error)
+            // console.error(error)
         } finally {
             setLoading(false)
         }

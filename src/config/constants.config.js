@@ -7,5 +7,5 @@ export let CONFIG_VARS
 
 if (import.meta.env['VITE_APP_ENVIORNMENT'] === 'development') {
     CONFIG_VARS = dev
-    console.log({ CONFIG_VARS })
+    // console.log({ CONFIG_VARS })
 }

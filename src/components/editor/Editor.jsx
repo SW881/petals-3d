@@ -97,7 +97,7 @@ const Editor = () => {
                 // console.log('No Groups or Lines to store')
             }
         } catch (error) {
-            console.error(error)
+            // console.error(error)
         } finally {
             setLoading(false)
         }
