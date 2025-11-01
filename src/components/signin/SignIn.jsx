@@ -37,7 +37,7 @@ const SignIn = () => {
     const handleSignIn = async (e) => {
         e.preventDefault()
         setLoading(true)
-        // console.log('Signing In...')
+        console.log('Signing In...')
 
         if (
             !formError.emailError &&
@@ -56,10 +56,10 @@ const SignIn = () => {
                     setSignInError(
                         `Error while sign in : ${result.error.message}`
                     )
-                    // console.log(result.error.message)
+                    console.log(result.error.message)
                 }
             } catch (error) {
-                // console.error('Error while sign in : ', error)
+                console.error('Error while sign in : ', error)
                 setSignInError('Error while sign in')
             } finally {
                 setLoading(false)
@@ -77,7 +77,7 @@ const SignIn = () => {
         })
 
         if (e.target.value.length <= 0) {
-            // console.log('e.target.value.length : ', e.target.value.length)
+            console.log('e.target.value.length : ', e.target.value.length)
             setFormError({
                 ...formError,
                 emailError: 'Email is required',
@@ -164,36 +164,35 @@ const SignIn = () => {
 
     return (
         <>
-            <div className="flex flex-col justify-center items-center">
+            <div className="text-[#FFFFFF] m-[32px] funnel-sans-bold text-[28px] flex-col justify-center items-center">
                 <div className="flex justify-center items-center gap-[8px] m-[32px] funnel-sans-bold text-[24px]">
                     <Petals3DIcon size={32} />
                     <div>Petals Whitebox</div>
                 </div>
-                <div className="flex flex-col justify-center items-center overflow-y-auto custom-scrollbar m-[12px]">
+
+                <div className="text-[#FFFFFF] flex flex-col justify-center items-center overflow-y-auto custom-scrollbar m-[12px]">
                     <div className="flex items-center justify-center funnel-sans-regular">
                         <div className="flex flex-col justify-center">
                             <div className="text-[24px] funnel-sans-regular">
                                 Welcome back
                             </div>
-                            <div className="text-[12px] text-[#777777]">
+                            <div className="text-[12px] text-[#C0C0C0]">
                                 Sign in to your account
                             </div>
-                            <div className="flex md:w-[370px] p-[8px] justify-center items-center border-[1px] gap-[8px] mt-[32px] self-center px-[24px] py-[4px] rounded-[4px] cursor-pointer">
+                            <div className="flex md:w-[370px] p-[8px] justify-center items-center border-[1px] gap-[8px] my-[32px] self-center px-[24px] py-[4px] rounded-[4px] cursor-pointer">
                                 <div className="text-[20px] p-[4px] rounded-[4px]">
-                                    <GoogleIcon color="#000000" size={24} />
+                                    <GoogleIcon color="#FFFFFF" size={24} />
                                 </div>
                                 <div className="text-[16px] px-[4px] rounded-[4px] funnel-sans-regular">
                                     Continue with Google
                                 </div>
                             </div>
-                            <div className="self-center mt-[16px] flex justify-center items-center">
-                                <div> or </div>
-                            </div>
+                            <div className="self-center text-[16px]"> or </div>
 
                             <form noValidate>
-                                <div className="flex flex-col">
-                                    <div className="">
-                                        <label className="text-[12px] block funnel-sans-regular text-[#FFFFFF] mb-[8px]">
+                                <div className="flex flex-col mt-[16px]">
+                                    <div className="mt-[16px]">
+                                        <label className="text-[12px] block funnel-sans-regular mb-[8px]">
                                             Email
                                         </label>
                                         <input
@@ -201,7 +200,7 @@ const SignIn = () => {
                                                 handleEmailChange(e)
                                             }
                                             type="email"
-                                            className="bg-[#FFFFFF] border-[1px] border-[#d9d9d9] text-[#444444] rounded-[4px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                            className="border-[1px] border-[#d9d9d9] rounded-[4px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
                                             placeholder="you@example.com"
                                             required
                                             disabled={loading}
@@ -215,11 +214,11 @@ const SignIn = () => {
 
                                     <div className="mt-[16px]">
                                         <div className="flex justify-between items-center  mb-[8px]">
-                                            <label className="text-[12px] block funnel-sans-regular text-[#444444]">
+                                            <label className="text-[12px] block funnel-sans-regular">
                                                 Password
                                             </label>
                                             <Link to="/forgot-password">
-                                                <label className="text-[12px] block funnel-sans-regular text-[#444444] cursor-pointer">
+                                                <label className="text-[12px] block funnel-sans-regular cursor-pointer">
                                                     Forgot Password?
                                                 </label>
                                             </Link>
@@ -255,7 +254,7 @@ const SignIn = () => {
                                                         : 'text'
                                                 }
                                                 autoComplete="on"
-                                                className="bg-[#FFFFFF] border-[1px] border-[#d9d9d9] text-[#444444] rounded-[4px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                                className="border-[1px] border-[#d9d9d9] rounded-[4px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
                                                 required
                                                 disabled={loading}
                                             />
@@ -274,7 +273,7 @@ const SignIn = () => {
                                     )}
 
                                     {userInputs.password.length > 0 && (
-                                        <div className="mt-[16px] flex flex-col text-[#444444]">
+                                        <div className="mt-[16px] flex flex-col">
                                             <ul className="list-none w-full funnel-sans-regular">
                                                 <li className="mt-[8px] text-[12px] flex justify-start gap-[4px] items-center">
                                                     {!passwordValidation.hasUpperCase ? (
@@ -359,28 +358,28 @@ const SignIn = () => {
                                         !userInputs.password
                                     }
                                     onClick={(e) => handleSignIn(e)}
-                                    className="flex w-full p-[4px] text-[16px] justify-center items-center gap-[8px] mt-[32px] self-center px-[24px] py-[8px] rounded-[4px] bg-[#8ce7bb] border-[1px] border-[#2cc182] cursor-pointer hover:bg-[#6cd5aa]"
+                                    className="active:scale-95 flex w-full p-[4px] text-[16px] justify-center items-center gap-[8px] mt-[32px] self-center px-[24px] py-[8px] rounded-[4px] bg-[#50C878] cursor-pointer"
                                 >
-                                    <div className="flex items-center justify-center gap-[4px]">
+                                    <div className="text-[#000000] flex items-center justify-center gap-[4px]">
                                         Sign In
                                     </div>
                                 </button>
                             </form>
 
-                            {/* <div className="self-center mt-[16px] flex justify-center items-center">
-                            <div className="flex gap-[2px] text-[12px]">
-                                <div>Don't have an account?</div>
-                                <Link to="/sign-up">
-                                    <div className="underline cursor-pointer funnel-sans-semibold">
-                                        Sign Up Now
-                                    </div>
-                                </Link>
+                            <div className="self-center mt-[16px] flex justify-center items-center">
+                                <div className="flex gap-[2px] text-[12px]">
+                                    <div>Don't have an account?</div>
+                                    <Link to="/sign-up">
+                                        <div className="underline cursor-pointer funnel-sans-semibold">
+                                            Sign Up Now
+                                        </div>
+                                    </Link>
+                                </div>
                             </div>
-                        </div> */}
                         </div>
                     </div>
                     <div className="text-center mt-[32px] flex justify-center px-[12px] text-[12px] funnel-sans-regular text-[#747474]">
-                        By continuing, you agree to Petals's Terms of Service
+                        By continuing, you agree to Petals 3d's Terms of Service
                         and Privacy Policy, and to receive periodic emails with
                         updates.
                     </div>

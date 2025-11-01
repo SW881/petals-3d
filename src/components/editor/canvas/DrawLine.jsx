@@ -1819,7 +1819,7 @@ const DrawLine = ({ id }) => {
 
             newMesh.userData = {
                 type: 'Line',
-                // note_id: id,
+                note_id: 1,
                 pts: pointsRef.current,
                 normals: normalsRef.current,
                 pressures: pressuresRef.current,
@@ -2039,7 +2039,7 @@ const DrawLine = ({ id }) => {
 
             newMesh.userData = {
                 type: 'Line',
-                // note_id: id,
+                note_id: 1,
                 pts: pointsRef.current,
                 normals: normalsRef.current,
                 pressures: pressuresRef.current,
@@ -2260,7 +2260,7 @@ const DrawLine = ({ id }) => {
 
             newMesh.userData = {
                 type: 'Line',
-                // note_id: id,
+                note_id: 1,
                 pts: pointsRef.current,
                 normals: normalsRef.current,
                 pressures: pressuresRef.current,
@@ -2479,7 +2479,7 @@ const DrawLine = ({ id }) => {
 
             newMesh.userData = {
                 type: 'Line',
-                // note_id: id,
+                note_id: 1,
                 pts: pointsRef.current,
                 normals: normalsRef.current,
                 pressures: pressuresRef.current,

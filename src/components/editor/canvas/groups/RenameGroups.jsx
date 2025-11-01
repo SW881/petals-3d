@@ -8,7 +8,7 @@ import { saveGroupToIndexDB } from '../../../../helpers/sceneFunction'
 import { canvasRenderStore } from '../../../../hooks/useRenderSceneStore'
 
 const RenameGroups = () => {
-    const { id } = useParams()
+    const { id = 1 } = useParams()
     const { setRenameGroupModal, session } = dashboardStore((state) => state)
     const [animateOut, setAnimateOut] = useState(false)
     const [groupName, setGroupName] = useState('')

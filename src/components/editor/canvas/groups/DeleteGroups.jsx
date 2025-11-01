@@ -10,7 +10,7 @@ import { drawStore } from '../../../../hooks/useDrawStore'
 import { canvasRenderStore } from '../../../../hooks/useRenderSceneStore'
 
 const DeleteGroups = () => {
-    const { id } = useParams()
+    const { id = 1 } = useParams()
     console.log('Note Id : ', id)
     const { setDeleteGroupModal } = dashboardStore((state) => state)
     const [animateOut, setAnimateOut] = useState(false)

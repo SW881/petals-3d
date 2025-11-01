@@ -44,7 +44,7 @@ const AddNewGroups = () => {
             const data = {
                 uuid: uuid(),
                 name: groupName,
-                note_id: id,
+                note_id: 1,
                 created_at: new Date().toISOString(),
                 deleted_at: null,
                 // created_by: session.id,

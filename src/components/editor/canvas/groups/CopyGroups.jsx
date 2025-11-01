@@ -9,7 +9,7 @@ import { saveGroupToIndexDB } from '../../../../helpers/sceneFunction'
 import { canvasRenderStore } from '../../../../hooks/useRenderSceneStore'
 
 const CopyGroups = () => {
-    const { id } = useParams()
+    const { id = 1 } = useParams()
     const { setCopyGroupModal } = dashboardStore((state) => state)
     const [animateOut, setAnimateOut] = useState(false)
     const [groupName, setGroupName] = useState('')

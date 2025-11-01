@@ -600,7 +600,7 @@ const ToolPanel = () => {
                     </button>
                 )}
 
-                {dynamicDrawingPlaneMesh && (
+                {/* {dynamicDrawingPlaneMesh && (
                     <button
                         onClick={(e) => handleDraw('selectGuide')}
                         className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
@@ -609,7 +609,7 @@ const ToolPanel = () => {
                     >
                         <SelectIcon color="#FFFFFF" size={20} />
                     </button>
-                )}
+                )} */}
 
                 {dynamicDrawingPlaneMesh && (
                     <button

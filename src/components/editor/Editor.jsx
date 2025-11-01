@@ -23,15 +23,19 @@ import {
 } from '../../helpers/sceneFunction'
 import { ADD_NOTE_DATA, FETECH_NOTE_BY_ID } from '../../services/api'
 import { dashboardStore } from '../../hooks/useDashboardStore'
+import SignOut from '../svg-icons/SignOut'
+import { UserAuth } from '../../context/AuthContext'
 
 const Editor = () => {
-    const { id } = useParams()
+    const { id = 1 } = useParams()
+    const { signOut } = UserAuth()
+
     // console.log('Note editor id : ', id)
     const [error, setError] = useState(false)
     const [loading, setLoading] = useState(false)
 
     const excludedKeys = ['geometry', 'material', 'mesh']
-    const { session } = dashboardStore((state) => state)
+    const { session, setSession } = dashboardStore((state) => state)
     const hasRun = useRef(false)
 
     const { setNotesData } = canvasDrawStore((state) => state)
@@ -67,7 +71,7 @@ const Editor = () => {
                 const data = {
                     uuid: uuid(),
                     name: 'G1',
-                    note_id: id,
+                    note_id: 1,
                     created_at: new Date().toISOString(),
                     deleted_at: null,
                     created_by: session.id,
@@ -419,6 +423,18 @@ const Editor = () => {
         setSnaping(true)
     })
 
+    const handleLogout = async (e) => {
+        e.preventDefault()
+        console.log('Logging Out...')
+
+        const result = await signOut()
+        if (result.success) {
+            console.log('Successfully loged out')
+            setSession(null)
+            navigate('/sign-in')
+        }
+    }
+
     return (
         <>
             <DisableBrowserGestures />
@@ -429,11 +445,14 @@ const Editor = () => {
             )}
 
             <div className="flex w-screen h-screen overflow-hidden prevent-select z-5">
-                <Link to="/folders">
-                    <button className="absolute top-[16px] left-[20px] p-[8px] border-[1px] z-5 border-[#FFFFFF] bg-[#000000] hover:bg-[#202020] rounded-[4px] cursor-pointer">
-                        <BackIcon color="#FFFFFF" size={16} />
-                    </button>
-                </Link>
+                {/* <Link to="/sign-in"> */}
+                <button
+                    className="absolute top-[16px] left-[20px] p-[8px] border-[1px] z-5 border-[#FFFFFF] bg-[#000000] hover:bg-[#202020] rounded-[4px] cursor-pointer"
+                    onClick={(e) => handleLogout(e)}
+                >
+                    <SignOut color="#FFFFFF" size={16} />
+                </button>
+                {/* </Link> */}
 
                 <button
                     onClick={(e) => saveScene(e)}
