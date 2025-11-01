@@ -7,10 +7,11 @@ import { dashboardStore } from '../../../../hooks/useDashboardStore'
 import WrongIcon from '../../../svg-icons/WrongIcon'
 import { saveGroupToIndexDB } from '../../../../helpers/sceneFunction'
 import { drawStore } from '../../../../hooks/useDrawStore'
+import { canvasRenderStore } from '../../../../hooks/useRenderSceneStore'
 
 const DeleteGroups = () => {
     const { id } = useParams()
-    // console.log('Note Id : ', id)
+    console.log('Note Id : ', id)
     const { setDeleteGroupModal } = dashboardStore((state) => state)
     const [animateOut, setAnimateOut] = useState(false)
     const [groupName, setGroupName] = useState('')
@@ -18,9 +19,13 @@ const DeleteGroups = () => {
 
     const { session } = dashboardStore((state) => state)
 
-    const { groupData, addNewGroup, sortGroupsByName } = drawStore(
-        (state) => state
-    )
+    const {
+        groupData,
+        resetSelectedGroups,
+        deleteSelectedGroups,
+        sortGroupsByName,
+        deleteGroups,
+    } = canvasRenderStore((state) => state)
 
     function handleClose() {
         setAnimateOut(true)
@@ -31,21 +36,18 @@ const DeleteGroups = () => {
         }, 200) // matches animation duration
     }
 
-    function handleNameChange(e) {
-        // console.log('Group Name : ', e.target.value)
-        setGroupName(e.target.value)
-    }
-
-    async function handleCreateNewGroup(e) {
+    async function handleDeleteGroups(e) {
         try {
             setLoading(true)
-            // console.log('Creating New Group  : ', session)
+            console.log('Deleteing Groups  : ')
 
-            addNewGroup(data)
+            deleteSelectedGroups()
             sortGroupsByName()
-            let gpD = [...groupData, data]
 
-            const response = await saveGroupToIndexDB(gpD, id)
+            const updatedGroupData = canvasRenderStore.getState().groupData
+
+            const response = await saveGroupToIndexDB(updatedGroupData, id)
+            resetSelectedGroups()
 
             if (response) {
                 handleClose()
@@ -54,8 +56,7 @@ const DeleteGroups = () => {
                 handleClose()
             }
         } catch (error) {
-            // console.error(error)
-            // setError(error.message)
+            console.error(error)
         } finally {
             setLoading(false)
         }
@@ -69,7 +70,7 @@ const DeleteGroups = () => {
                 <div className="fixed inset-0 z-10 overflow-y-auto text-[8px] md:text-[12px]">
                     <div className="flex h-full items-center justify-center text-center">
                         <div
-                            className={`relative overflow-hidden rounded-[4px] bg-[#FFFFFF] w-[320px] md:w-[420px] transition-all duration-200 ease-out transform
+                            className={`bg-[#000000] relative overflow-hidden rounded-[4px] w-[320px] md:w-[420px] transition-all duration-200 ease-out transform
                                 ${
                                     animateOut
                                         ? 'animate-fade-out'
@@ -77,43 +78,33 @@ const DeleteGroups = () => {
                                 }`}
                         >
                             <div className="flex justify-between items-center text-left text-[12px] md:text-[16px] p-[12px] m-[4px] border-b-[1px] border-[#D9D9D9] funnel-sans-semibold">
-                                <div className="text-[#000000]">
+                                <div className="text-[#FFFFFF]">
                                     Delete Groups
                                 </div>
                                 <div
                                     onClick={(e) => handleClose(e)}
-                                    className="p-[4px] flex justify-between rounded-[4px] items-center cursor-pointer border-1 border-[#FFFFFF] hover:border-[#0096c7]"
+                                    className="active:scale-75 p-[4px] flex justify-between rounded-[4px] items-center cursor-pointer border-1 border-[#FFFFFF] hover:border-[#0096c7]"
                                 >
-                                    <WrongIcon color="#000000" size={12} />
+                                    <WrongIcon color="#FFFFFF" size={12} />
                                 </div>
                             </div>
-                            <div className="bg-[#FFFFFF] mx-[20px] mt-[12px]">
+                            <div className="mx-[20px] mt-[12px]">
                                 <div className="mt-[16px] text-[12px] text-[#FFFFFF] text-left">
                                     Are you sure you want to delete groups ?
-                                    {/* <label className="text-left text-[12px] block funnel-sans-regular text-[#FFFFFF] mb-[8px]">
-                                        Name
-                                    </label>
-                                    <input
-                                        onChange={(e) => handleNameChange(e)}
-                                        type="text"
-                                        className="bg-[#FFFFFF] border-[1px] border-[#d9d9d9] text-[#444444] rounded-[4px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
-                                        required
-                                        disabled={loading}
-                                    /> */}
                                 </div>
                             </div>
                             <div className="mt-[12px] flex justify-end items-center px-4 py-3 gap-[12px]">
                                 <button
                                     onClick={(e) => handleClose(e)}
-                                    className="border-[1px] text-[#000000] border-[#D9D9D9] px-[12px] py-[4px] rounded-[4px] hover:bg-[#F2F2F2] cursor-pointer"
+                                    className="active:scale-85 text-[#FFFFFF] border-[#FFFFFF] border-[1px] px-[12px] py-[4px] rounded-[4px] cursor-pointer"
                                 >
                                     Cancel
                                 </button>
 
                                 <button
                                     disabled={loading}
-                                    onClick={(e) => handleCreateNewGroup(e)}
-                                    className="px-[12px] py-[4px] rounded-[4px] text-[#000000] bg-[#ffe3ce] border-[1px] border-[#fe775c] hover:bg-[#f3ccc4] cursor-pointer"
+                                    onClick={(e) => handleDeleteGroups(e)}
+                                    className="text-[#000000] active:scale-85 px-[12px] py-[4px] rounded-[4px] bg-[#FF3131] cursor-pointer"
                                 >
                                     Delete
                                 </button>

@@ -9,22 +9,24 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
     const { camera, scene, gl } = useThree()
     const planeRef = useRef()
 
+    const {
+        drawGuide,
+        drawShapeType,
+        strokeOpacity,
+        setOgGuidePoints,
+        setOgGuideNormals,
+        strokeStablePercentage,
+    } = canvasDrawStore((state) => state)
+
+    const { orbitalLock, setOrbitalLock } = canvasViewStore((state) => state)
+
     const MAX_POINTS = 50000
-    const SMOOTH_PERCENTAGE = 25
+    // const SMOOTH_PERCENTAGE = 25
+    const SMOOTH_PERCENTAGE = strokeStablePercentage
     const DISTANCE_THRESHOLD = 0.01
     const OPTIMIZATION_THRESHOLD = 0.01 // Threshold for pre-smoothing filtering
     let startPoint = null
     let currentNormal = null // To store the normal of the drawing plane
-
-    const {
-        drawGuide,
-        drawShape,
-        strokeOpacity,
-        setOgGuidePoints,
-        setOgGuideNormals,
-    } = canvasDrawStore((state) => state)
-
-    const { orbitalLock, setOrbitalLock } = canvasViewStore((state) => state)
 
     let isDrawing = false
     let points = []
@@ -32,7 +34,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
     let normals = []
     let currentMesh = null
 
-    const color = new THREE.Color('#e5e4e2')
+    const color = new THREE.Color('#F2F2F2')
 
     // Circle
     const generateCirclePointsWorld = useCallback(
@@ -175,6 +177,10 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
             squarePoints.push(squarePoints[0].clone())
             squareNormals.push(normal.clone())
 
+            // return {
+            //     squarePoints,
+            //     squareNormals,
+            // }
             return {
                 squarePoints: squarePoints,
                 squareNormals: squareNormals,
@@ -228,6 +234,10 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
             semiCirclePoints.push(semiCirclePoints[0].clone())
             semiCircleNormals.push(normal.clone())
 
+            // return {
+            //     semiCirclePoints,
+            //     semiCircleNormals,
+            // }
             return {
                 circlePoints: semiCirclePoints,
                 circleNormals: semiCircleNormals,
@@ -499,7 +509,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
         let pressures = pressuresArr
         let finalNormals = normalsArr
 
-        if (drawShape === 'free_hand') {
+        if (drawShapeType === 'free_hand') {
             pts = smoothPoints(rawPts, SMOOTH_PERCENTAGE)
             pressures = smoothArray(pressuresArr, SMOOTH_PERCENTAGE)
             const filteredResult = filterPoints(
@@ -675,7 +685,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
         pressures.push(pressure)
         normals.push(currentNormal)
 
-        if (drawShape === 'free_hand') {
+        if (drawShapeType === 'free_hand') {
             const secondPoint = new THREE.Vector3()
                 .copy(startPoint)
                 .addScalar(0.001)
@@ -687,52 +697,6 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
         updateLine(currentMesh, points, pressures, normals)
     }
 
-    // function continueDrawing(event) {
-    //     if (!isDrawing || !planeRef.current) return
-    //     const { point, normal } = getPlaneIntersection(event)
-    //     if (!point) return
-
-    //     const pressure = 1.0
-
-    //     if (drawShape === 'free_hand') {
-    //         let newPoint = point.clone()
-
-    //         const last = points[points.length - 1]
-    //         if (newPoint.distanceTo(last) < DISTANCE_THRESHOLD) return
-
-    //         points.push(newPoint)
-    //         pressures.push(pressure)
-    //         normals.push(normal)
-
-    //         if (points.length > MAX_POINTS) {
-    //             points.shift()
-    //             pressures.shift()
-    //             normals.shift()
-    //         }
-
-    //         updateLine(currentMesh, points, pressures, normals)
-    //     } else {
-    //         if (!startPoint || !currentNormal) return
-
-    //         const radius = startPoint.distanceTo(point)
-    //         const pressure = 1.0
-
-    //         const { circlePoints, circleNormals } = generateCirclePointsWorld(
-    //             startPoint,
-    //             currentNormal,
-    //             radius
-    //         )
-    //         const circlePressures = Array(circlePoints.length).fill(pressure)
-
-    //         updateLine(
-    //             currentMesh,
-    //             circlePoints,
-    //             circlePressures,
-    //             circleNormals
-    //         )
-    //     }
-    // }
-
     function continueDrawing(event) {
         if (!isDrawing || !planeRef.current) return
         const { point, normal } = getPlaneIntersection(event)
@@ -740,7 +704,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
 
         const pressure = 1.0
 
-        if (drawShape === 'free_hand') {
+        if (drawShapeType === 'free_hand') {
             let newPoint = point.clone()
             const last = points[points.length - 1]
             if (newPoint.distanceTo(last) < DISTANCE_THRESHOLD) return
@@ -756,7 +720,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
             }
 
             updateLine(currentMesh, points, pressures, normals)
-        } else if (drawShape === 'straight') {
+        } else if (drawShapeType === 'straight') {
             if (!startPoint || !currentNormal) return
 
             // Snap point to constrained angle (max 45°)
@@ -786,7 +750,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
             normals.push(normal.clone())
 
             updateLine(currentMesh, points, pressures, normals)
-        } else if (drawShape === 'circle') {
+        } else if (drawShapeType === 'circle') {
             if (!startPoint || !currentNormal) return
 
             const radius = startPoint.distanceTo(point)
@@ -805,7 +769,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
                 circlePressures,
                 circleNormals
             )
-        } else if (drawShape === 'square') {
+        } else if (drawShapeType === 'square') {
             if (!startPoint || !currentNormal) return
 
             const radius = startPoint.distanceTo(point)
@@ -825,7 +789,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
                 squarePressures,
                 squareNormals
             )
-        } else if (drawShape === 'arc') {
+        } else if (drawShapeType === 'arc') {
             if (!startPoint || !currentNormal) return
 
             const radius = startPoint.distanceTo(point)
@@ -845,7 +809,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
     function stopDrawing(event) {
         if (!isDrawing || !planeRef.current) return
 
-        if (drawShape === 'free_hand' || drawShape === 'straight') {
+        if (drawShapeType === 'free_hand' || drawShapeType === 'straight') {
             if (!currentMesh || !startPoint || points.length < 2) {
                 if (currentMesh) scene.remove(currentMesh)
                 currentMesh = null
@@ -895,7 +859,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
                     onDrawingFinished(ribbonMesh)
                 }
             }
-        } else if (drawShape === 'circle') {
+        } else if (drawShapeType === 'circle') {
             const lastPoint =
                 getPlaneIntersection(event)?.point || points[points.length - 1]
             const radius = startPoint.distanceTo(lastPoint)
@@ -953,7 +917,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
                     onDrawingFinished(ribbonMesh)
                 }
             }
-        } else if (drawShape === 'square') {
+        } else if (drawShapeType === 'square') {
             const lastPoint =
                 getPlaneIntersection(event)?.point || points[points.length - 1]
             const radius = startPoint.distanceTo(lastPoint)
@@ -1015,7 +979,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
                     onDrawingFinished(ribbonMesh)
                 }
             }
-        } else if (drawShape === 'arc') {
+        } else if (drawShapeType === 'arc') {
             const lastPoint =
                 getPlaneIntersection(event)?.point || points[points.length - 1]
             const radius = startPoint.distanceTo(lastPoint)

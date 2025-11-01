@@ -58,7 +58,13 @@ export const canvasRenderStore = create((set, get) => ({
         })),
 
     groupData: [],
+
     selectedGroups: [],
+
+    setGroupData: (data) =>
+        set((state) => ({
+            groupData: data,
+        })),
 
     addToSelectedGroup: (group) =>
         set((state) => ({
@@ -69,6 +75,16 @@ export const canvasRenderStore = create((set, get) => ({
         set((state) => ({
             selectedGroups: state.selectedGroups.filter(
                 (item) => item.uuid !== groupId
+            ), // Filter out the removed item
+        })),
+
+    deleteSelectedGroups: (groupIds) =>
+        set((state) => ({
+            groupData: state.groupData.filter(
+                (group) => !groupIds.includes(group.uuid)
+            ),
+            selectedGroups: state.selectedGroups.filter(
+                (group) => !groupIds.includes(group.uuid)
             ),
         })),
 
@@ -125,6 +141,21 @@ export const canvasRenderStore = create((set, get) => ({
             groupData: [...state.groupData, newGroup],
         })),
 
+    deleteSelectedGroups: () => {
+        const { selectedGroups, groupData } = get()
+
+        // Extract UUIDs from selected groups
+        const selectedIds = selectedGroups.map((g) => g.uuid)
+
+        // Filter out any group whose UUID matches a selected one
+        const updatedGroups = groupData.filter(
+            (group) => !selectedIds.includes(group.uuid)
+        )
+
+        // Update store: remove from both groupData and selectedGroups
+        set({ groupData: updatedGroups })
+    },
+
     sortGroupsByName: () =>
         set((state) => {
             const sorted = [...state.groupData].sort(
@@ -134,6 +165,12 @@ export const canvasRenderStore = create((set, get) => ({
             )
             return { groupData: sorted }
         }),
+
+    copyGroups: false,
+    setCopyGroups: (bool) =>
+        set((state) => ({
+            copyGroups: bool,
+        })),
 
     // ---- Group Actions ----
 

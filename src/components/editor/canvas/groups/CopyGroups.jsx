@@ -6,7 +6,7 @@ import { dashboardStore } from '../../../../hooks/useDashboardStore'
 
 import WrongIcon from '../../../svg-icons/WrongIcon'
 import { saveGroupToIndexDB } from '../../../../helpers/sceneFunction'
-import { drawStore } from '../../../../hooks/useDrawStore'
+import { canvasRenderStore } from '../../../../hooks/useRenderSceneStore'
 
 const CopyGroups = () => {
     const { id } = useParams()
@@ -22,7 +22,7 @@ const CopyGroups = () => {
         groupData,
         copyGroups,
         setCopyGroups,
-    } = drawStore((state) => state)
+    } = canvasRenderStore((state) => state)
 
     function handleClose() {
         setAnimateOut(true)
@@ -36,24 +36,24 @@ const CopyGroups = () => {
     async function handleCopyGroups(e) {
         try {
             setLoading(true)
-            // console.log('Copying Groups  : ', selectedGroups)
+            console.log('Copying Groups  : ', selectedGroups)
             copySelectedGroups()
 
-            const updatedGroupData = drawStore.getState().groupData
+            const updatedGroupData = canvasRenderStore.getState().groupData
 
             setCopyGroups(!copyGroups)
 
             const response = await saveGroupToIndexDB(updatedGroupData, id)
 
-            resetSelectedGroups()
-            // if (response) {
-            handleClose()
-            // } else {
-            //     setError('Error while saving data')
-            //     handleClose()
-            // }
+            if (response) {
+                resetSelectedGroups()
+                handleClose()
+            } else {
+                setError('Error while saving data')
+                handleClose()
+            }
         } catch (error) {
-            // console.error(error)
+            console.error(error)
             // setError(error.message)
         } finally {
             setLoading(false)
@@ -68,25 +68,26 @@ const CopyGroups = () => {
                 <div className="fixed inset-0 z-10 overflow-y-auto text-[8px] md:text-[12px]">
                     <div className="flex h-full items-center justify-center text-center">
                         <div
-                            className={`relative overflow-hidden rounded-[4px] bg-[#FFFFFF] w-[320px] md:w-[420px] transition-all duration-200 ease-out transform
+                            className={`bg-[#000000] relative overflow-hidden rounded-[4px] w-[320px] md:w-[420px] transition-all duration-200 ease-out transform
                                 ${
                                     animateOut
                                         ? 'animate-fade-out'
                                         : 'animate-fade-in'
                                 }`}
                         >
-                            <div className="flex justify-between items-center text-left text-[12px] md:text-[16px] p-[12px] m-[4px] border-b-[1px] border-[#D9D9D9] funnel-sans-semibold">
-                                <div className="text-[#000000]">
-                                    Copy Groups
+                            <div className="flex justify-between items-center text-left text-[12px] md:text-[16px] p-[12px] m-[4px] border-b-[1px] border-[#FFFFFF] funnel-sans-semibold">
+                                <div className="text-[#FFFFFF]">
+                                    Copy selected groups
                                 </div>
                                 <div
                                     onClick={(e) => handleClose(e)}
-                                    className="p-[4px] flex justify-between rounded-[4px] items-center cursor-pointer border-1 border-[#FFFFFF] hover:border-[#0096c7]"
+                                    className="active:scale-75 p-[4px] flex justify-between rounded-[4px] items-center cursor-pointer border-1 border-[#FFFFFF] hover:border-[#0096c7]"
                                 >
-                                    <WrongIcon color="#000000" size={12} />
+                                    <WrongIcon color="#FFFFFF" size={12} />
                                 </div>
                             </div>
-                            <div className="bg-[#FFFFFF] mx-[20px] mt-[12px]">
+
+                            <div className="mx-[20px] mt-[12px]">
                                 <div className="mt-[16px] text-[12px] text-[#FFFFFF] text-left">
                                     Are you sure you want to copy groups ?
                                 </div>
@@ -94,7 +95,7 @@ const CopyGroups = () => {
                             <div className="mt-[12px] flex justify-end items-center px-4 py-3 gap-[12px]">
                                 <button
                                     onClick={(e) => handleClose(e)}
-                                    className="border-[1px] text-[#000000] border-[#D9D9D9] px-[12px] py-[4px] rounded-[4px] hover:bg-[#F2F2F2] cursor-pointer"
+                                    className="active:scale-85 text-[#FFFFFF] border-[#FFFFFF] border-[1px] px-[12px] py-[4px] rounded-[4px] cursor-pointer"
                                 >
                                     Cancel
                                 </button>
@@ -102,7 +103,7 @@ const CopyGroups = () => {
                                 <button
                                     disabled={loading}
                                     onClick={(e) => handleCopyGroups(e)}
-                                    className="px-[12px] py-[4px] rounded-[4px] text-[#000000] bg-[#8ce7bb] border-[1px] border-[#2cc182] hover:bg-[#6cd5aa] cursor-pointer"
+                                    className="text-[#000000] active:scale-85 px-[12px] py-[4px] rounded-[4px] bg-[#50C878] cursor-pointer"
                                 >
                                     Copy
                                 </button>

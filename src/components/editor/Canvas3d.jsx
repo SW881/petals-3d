@@ -19,14 +19,12 @@ import CanvasOperations from './canvas/CanvasOperations'
 
 const Canvas3d = ({ id }) => {
     const {
-        orbitalLock,
-        dprValue,
-        isOrthographic,
-        setIsOrthographic,
         cameraFov,
         gridPlaneX,
         gridPlaneY,
         gridPlaneZ,
+        orbitalLock,
+        isOrthographic,
     } = canvasViewStore((state) => state)
 
     const {
@@ -132,7 +130,7 @@ const Canvas3d = ({ id }) => {
             // Sequential visibility with delay
             const showSequentially = async () => {
                 for (const obj of sampleObjects) {
-                    await new Promise((resolve) => setTimeout(resolve, 500)) // 1 sec
+                    await new Promise((resolve) => setTimeout(resolve, 10)) // 1 sec
                     obj.visible = true
                 }
 
@@ -157,7 +155,8 @@ const Canvas3d = ({ id }) => {
                     setSnaping(true)
                 }}
                 onChange={(e) => camera.updateProjectionMatrix()}
-                dpr={dprValue}
+                // dpr={dprValue}
+                dpr={[1, 2]}
             >
                 <directionalLight
                     color={0xffffff}
@@ -182,6 +181,7 @@ const Canvas3d = ({ id }) => {
                     <group>
                         {gridPlaneX && (
                             <gridHelper
+                                scale={2}
                                 rotation={[0, 0, 0]}
                                 args={[50, 50, `#DE3163`, `#D3D3D3`]}
                             />
@@ -189,6 +189,7 @@ const Canvas3d = ({ id }) => {
 
                         {gridPlaneY && (
                             <gridHelper
+                                scale={2}
                                 rotation={[Math.PI / 2, 0, 0]}
                                 args={[50, 50, `#50C878`, `#D3D3D3`]}
                             />
@@ -196,6 +197,7 @@ const Canvas3d = ({ id }) => {
 
                         {gridPlaneZ && (
                             <gridHelper
+                                scale={2}
                                 rotation={[0, 0, Math.PI / 2]}
                                 args={[50, 50, `#0096FF`, `#D3D3D3`]}
                             />
@@ -210,9 +212,11 @@ const Canvas3d = ({ id }) => {
                     maxDistance={200} // how far user can zoom out
                     enabled={true}
                     enableRotate={!orbitalLock}
-                    enablePan={true}
+                    enablePan={!orbitalLock}
                     enableZoom={true}
                     enableDamping={false}
+                    maxZoom={200}
+                    minZoom={20}
                 />
                 <CanvasOperations id={id} />
 

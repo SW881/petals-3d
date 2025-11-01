@@ -1,6 +1,13 @@
 import { create } from 'zustand'
+import { v4 as uuid } from 'uuid'
 
 export const canvasDrawStore = create((set, get) => ({
+    notesData: [],
+    setNotesData: (obj) =>
+        set((state) => ({
+            notesData: obj,
+        })),
+
     penActive: false,
     setPenActive: (active) =>
         set((state) => ({
@@ -25,10 +32,10 @@ export const canvasDrawStore = create((set, get) => ({
             strokeType: style,
         })),
 
-    drawShape: 'free_hand',
+    drawShapeType: 'free_hand',
     setDrawShapeType: (style) =>
         set((state) => ({
-            drawShape: style,
+            drawShapeType: style,
         })),
 
     openOpacitySlider: false,
@@ -43,10 +50,10 @@ export const canvasDrawStore = create((set, get) => ({
             openWidthSlider: bool,
         })),
 
-    openStrokStabler: false,
-    setOpenStrokStabler: (bool) =>
+    openStrokeStabler: false,
+    setOpenStrokeStabler: (bool) =>
         set((state) => ({
-            openStrokStabler: bool,
+            openStrokeStabler: bool,
         })),
 
     pressureMode: false,
@@ -95,7 +102,7 @@ export const canvasDrawStore = create((set, get) => ({
         })),
 
     widthBackground: `4.8% 100%`,
-    stableBackground: `25% 100%`,
+    stableBackground: `50% 100%`,
     opacityBackground: `100% 100%`,
 
     setWidthBackground: (value) =>
@@ -113,7 +120,7 @@ export const canvasDrawStore = create((set, get) => ({
 
     strokeWidth: 0.25,
     strokeOpacity: 1,
-    strokeStablePercentage: 2.5,
+    strokeStablePercentage: 50,
     setStrokeWidth: (width) =>
         set((state) => ({
             strokeWidth: width,
@@ -139,6 +146,13 @@ export const canvasDrawStore = create((set, get) => ({
         set((state) => ({
             selectLines: select,
         })),
+
+    selectGuide: false,
+    setSelectGuide: (select) =>
+        set((state) => ({
+            selectGuide: select,
+        })),
+
     copy: false,
     setCopy: (bool) =>
         set((state) => ({

@@ -432,26 +432,29 @@ function bendOGGuide(
 }
 
 const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
+    // console.log('In Bend Guide')
     const { camera, scene, gl } = useThree()
     const planeRef = useRef()
 
-    const MAX_POINTS = 50000
-    const SMOOTH_PERCENTAGE = 25
-    const DISTANCE_THRESHOLD = 0.01
-    const OPTIMIZATION_THRESHOLD = 0.01 // Threshold for pre-smoothing filtering
-    let startPoint = null
-    let currentNormal = null // To store the normal of the drawing plane
-
     const {
         drawGuide,
-        drawShape,
+        drawShapeType,
         strokeOpacity,
         ogGuidePoints,
         ogGuideNormals,
         bendPlaneGuide,
+        strokeStablePercentage,
     } = canvasDrawStore((state) => state)
 
     const { orbitalLock, setOrbitalLock } = canvasViewStore((state) => state)
+
+    const MAX_POINTS = 50000
+    // const SMOOTH_PERCENTAGE = 25
+    const SMOOTH_PERCENTAGE = strokeStablePercentage
+    const DISTANCE_THRESHOLD = 0.01
+    const OPTIMIZATION_THRESHOLD = 0.01 // Threshold for pre-smoothing filtering
+    let startPoint = null
+    let currentNormal = null // To store the normal of the drawing plane
 
     let isDrawing = false
     let points = []
@@ -459,7 +462,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
     let normals = []
     let currentMesh = null
 
-    const color = new THREE.Color('#e5e4e2')
+    const color = new THREE.Color('#F2F2F2')
 
     // Circle
     const generateCirclePointsWorld = useCallback(
@@ -850,7 +853,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
         let pressures = pressuresArr
         let finalNormals = normalsArr
 
-        if (drawShape === 'free_hand') {
+        if (drawShapeType === 'free_hand') {
             pts = smoothPoints(rawPts, SMOOTH_PERCENTAGE)
             pressures = smoothArray(pressuresArr, SMOOTH_PERCENTAGE)
             const filteredResult = filterPoints(
@@ -1025,7 +1028,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
         pressures.push(pressure)
         normals.push(currentNormal)
 
-        if (drawShape === 'free_hand') {
+        if (drawShapeType === 'free_hand') {
             const secondPoint = new THREE.Vector3()
                 .copy(startPoint)
                 .addScalar(0.001)
@@ -1044,7 +1047,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
 
         const pressure = 1.0
 
-        if (drawShape === 'free_hand') {
+        if (drawShapeType === 'free_hand') {
             let newPoint = point.clone()
 
             const last = points[points.length - 1]
@@ -1061,7 +1064,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
             }
 
             updateLine(currentMesh, points, pressures, normals)
-        } else if (drawShape === 'straight') {
+        } else if (drawShapeType === 'straight') {
             if (!startPoint || !currentNormal) return
 
             // Snap point to constrained angle (max 45°)
@@ -1090,7 +1093,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
             normals.push(normal.clone())
 
             updateLine(currentMesh, points, pressures, normals)
-        } else if (drawShape === 'circle') {
+        } else if (drawShapeType === 'circle') {
             if (!startPoint || !currentNormal) return
 
             const radius = startPoint.distanceTo(point)
@@ -1110,7 +1113,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
                 circlePressures,
                 circleNormals
             )
-        } else if (drawShape === 'square') {
+        } else if (drawShapeType === 'square') {
             if (!startPoint || !currentNormal) return
 
             const radius = startPoint.distanceTo(point)
@@ -1130,7 +1133,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
                 squarePressures,
                 squareNormals
             )
-        } else if (drawShape === 'arc') {
+        } else if (drawShapeType === 'arc') {
             if (!startPoint || !currentNormal) return
 
             const radius = startPoint.distanceTo(point)
@@ -1150,7 +1153,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
     function stopDrawing(event) {
         if (!isDrawing || !planeRef.current) return
 
-        if (drawShape === 'free_hand' || drawShape === 'straight') {
+        if (drawShapeType === 'free_hand' || drawShapeType === 'straight') {
             if (!currentMesh || !startPoint || points.length < 2) {
                 if (currentMesh) scene.remove(currentMesh)
                 currentMesh = null
@@ -1159,7 +1162,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
             }
 
             // Generate Bend Guide
-            // console.log('Bending original guide free_hand || straight')
+            console.log('Bending original guide free_hand || straight')
             const wrappedRibbon = bendOGGuide(
                 ogGuidePoints, // Vector3[] cross-section
                 points, // Vector3[] path
@@ -1177,7 +1180,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
 
             if (wrappedRibbon) {
                 const ribbonMaterial = new THREE.MeshBasicMaterial({
-                    color: new THREE.Color(0x7393b3),
+                    color: color,
                     wireframe: false,
                     transparent: true,
                     opacity: 0.25,
@@ -1199,7 +1202,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
                     onDrawingFinished(ribbonMesh)
                 }
             }
-        } else if (drawShape === 'circle') {
+        } else if (drawShapeType === 'circle') {
             const lastPoint =
                 getPlaneIntersection(event)?.point || points[points.length - 1]
             const radius = startPoint.distanceTo(lastPoint)
@@ -1236,7 +1239,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
 
             if (wrappedRibbon) {
                 const ribbonMaterial = new THREE.MeshBasicMaterial({
-                    color: new THREE.Color(0x7393b3),
+                    color: color,
                     wireframe: false,
                     transparent: true,
                     opacity: 0.25,
@@ -1258,7 +1261,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
                     onDrawingFinished(ribbonMesh)
                 }
             }
-        } else if (drawShape === 'square') {
+        } else if (drawShapeType === 'square') {
             const lastPoint =
                 getPlaneIntersection(event)?.point || points[points.length - 1]
             const radius = startPoint.distanceTo(lastPoint)
@@ -1300,7 +1303,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
 
             if (wrappedRibbon) {
                 const ribbonMaterial = new THREE.MeshBasicMaterial({
-                    color: new THREE.Color(0x7393b3),
+                    color: color,
                     wireframe: false,
                     transparent: true,
                     opacity: 0.25,
@@ -1322,7 +1325,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
                     onDrawingFinished(ribbonMesh)
                 }
             }
-        } else if (drawShape === 'arc') {
+        } else if (drawShapeType === 'arc') {
             const lastPoint =
                 getPlaneIntersection(event)?.point || points[points.length - 1]
             const radius = startPoint.distanceTo(lastPoint)
@@ -1359,7 +1362,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
 
             if (wrappedRibbon) {
                 const ribbonMaterial = new THREE.MeshBasicMaterial({
-                    color: new THREE.Color(0x7393b3),
+                    color: color,
                     wireframe: false,
                     transparent: true,
                     opacity: 0.25,

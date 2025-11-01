@@ -1,6 +1,6 @@
 import React from 'react'
 
-const SignOutIcon = ({ color, size }) => {
+const SignOut = ({ color, size }) => {
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -33,4 +33,4 @@ const SignOutIcon = ({ color, size }) => {
     )
 }
 
-export default SignOutIcon
+export default SignOut

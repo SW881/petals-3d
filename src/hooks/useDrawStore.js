@@ -8,7 +8,7 @@ export const drawStore = create((set, get) => ({
     straightHandStroke: false,
     strokeTapperd: false,
     strokeType: 'cube',
-    drawShape: 'free_hand',
+    drawShapeType: 'free_hand',
     axisHelper: false,
     gridPlaneX: true,
     gridPlaneY: false,
@@ -30,7 +30,7 @@ export const drawStore = create((set, get) => ({
     activeScene: null,
     openOpacitySlider: false,
     openWidthSlider: false,
-    openStrokStabler: false,
+    openStrokeStabler: false,
     pressureMode: false,
     mirrorOptions: false,
     openDrawShapeOptions: false,
@@ -184,7 +184,7 @@ export const drawStore = create((set, get) => ({
 
     setDrawShapeType: (style) =>
         set((state) => ({
-            drawShape: style,
+            drawShapeType: style,
         })),
 
     setAxisHelper: (show) =>
@@ -317,9 +317,9 @@ export const drawStore = create((set, get) => ({
             strokeStablePercentage: value,
         })),
 
-    setOpenStrokStabler: (bool) =>
+    setOpenStrokeStabler: (bool) =>
         set((state) => ({
-            openStrokStabler: bool,
+            openStrokeStabler: bool,
         })),
 
     setStableBackground: (value) =>

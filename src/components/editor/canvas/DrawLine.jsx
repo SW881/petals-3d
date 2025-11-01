@@ -3,41 +3,69 @@ import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js'
 import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
+import { saveSceneLinesToIndexDB } from '../../../helpers/sceneFunction'
+import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
 
 const DrawLine = ({ id }) => {
     const { camera, scene, gl } = useThree()
     const planeRef = useRef()
 
-    const MAX_POINTS = 50000
-    const SMOOTH_PERCENTAGE = 25
-    const DISTANCE_THRESHOLD = 0.001
-    const OPTIMIZATION_THRESHOLD = 0.01 // Threshold for pre-smoothing filtering
-    const SIMPLIFY_PERCENTAGE = 0.0 // 45% reduction of vertices
-    let startPoint = null
-    let currentNormal = null // To store the normal of the drawing plane
+    // Tension control state and refs
+    const holdTimerRef = useRef(null)
+    const lastPointRef = useRef(null)
+    const tensionModeRef = useRef(false)
+    const originalMirrorDataRef = useRef({}) // Store original mirror data for tension
+    const initialTensionYRef = useRef(0)
+    const [tension, setTension] = useState(0.5)
+
+    // Store original points and EXACT WIDTHS for tension recalculation
+    const originalPointsRef = useRef([])
+    const originalPressuresRef = useRef([])
+    const originalNormalsRef = useRef([])
+    const originalStrokeWidthsRef = useRef([]) // Store exact w and h for each point
+
+    // Use refs instead of let variables for persistence
+    const pointsRef = useRef([])
+    const pressuresRef = useRef([])
+    const normalsRef = useRef([])
+    const currentMeshRef = useRef(null)
+    const startPointRef = useRef(null)
+    const currentNormalRef = useRef(null)
+    const isDrawingRef = useRef(false)
+    const mirrorDataRef = useRef({})
+    const mirrorMeshesRef = useRef({})
+
+    // const drawPointCountRef = useRef(0)
+    const cachedWorldMatrixRef = useRef(null)
+    const cachedWorldMatrixInverseRef = useRef(null)
 
     const {
-        dynamicDrawingPlaneMesh,
-        strokeOpacity,
-        strokeWidth,
-        strokeColor,
-        pressureMode,
         mirror,
         strokeType,
-        drawShape,
+        strokeColor,
+        strokeWidth,
+        pressureMode,
+        drawShapeType,
+        strokeOpacity,
         activeMaterialType,
+        strokeStablePercentage,
+        dynamicDrawingPlaneMesh,
     } = canvasDrawStore((state) => state)
 
-    let isDrawing = false
-    let points = []
-    let pressures = []
-    let normals = []
-    let currentMesh = null
-    let mirrorData = {}
-    let mirrorMeshes = {}
+    const { activeGroup } = canvasRenderStore((state) => state)
+
+    const MAX_POINTS = 50000
+    const SMOOTH_PERCENTAGE = strokeStablePercentage
+    const DISTANCE_THRESHOLD = 0.03
+    const OPTIMIZATION_THRESHOLD = 0.15
+    const SIMPLIFY_PERCENTAGE = 0.0
+
+    // Tension control constants
+    const HOLD_DURATION = 1000 // 5 seconds
+    const HOLD_THRESHOLD = 0.02 // Distance threshold for "holding still"
+    const TENSION_SENSITIVITY = 0.005 // Screen Y movement sensitivity
 
     const isMirroring = mirror.x || mirror.y || mirror.z
-
     const color = new THREE.Color(strokeColor)
 
     const getAdaptiveStrokWidth = (pressure, width) => {
@@ -60,7 +88,6 @@ const DrawLine = ({ id }) => {
                 h = (pressure * width) / 2
                 break
             default:
-                key
                 break
         }
         return { w, h }
@@ -68,19 +95,10 @@ const DrawLine = ({ id }) => {
 
     const getActiveMirrorModes = () => {
         let mirrorString = []
-        if (mirror.x) {
-            mirrorString.push('X')
-        }
-        if (mirror.y) {
-            mirrorString.push('Y')
-        }
-        if (mirror.z) {
-            mirrorString.push('Z')
-        }
+        if (mirror.x) mirrorString.push('X')
+        if (mirror.y) mirrorString.push('Y')
+        if (mirror.z) mirrorString.push('Z')
         return mirrorString
-        // if (!mirrorMode || mirrorMode === 'None') return []
-        // const uniqueAxes = Array.from(new Set(mirrorMode.split(''))).sort()
-        // return uniqueAxes.filter((axis) => ['X', 'Y', 'Z'].includes(axis))
     }
 
     const getMirroredPoint = useCallback(
@@ -91,10 +109,15 @@ const DrawLine = ({ id }) => {
                     mirroredNormal: null,
                 }
 
-            const worldMatrix = planeMesh.matrixWorld
-            const worldMatrixInverse = new THREE.Matrix4()
-                .copy(worldMatrix)
-                .invert()
+            if (!cachedWorldMatrixRef.current) {
+                cachedWorldMatrixRef.current = planeMesh.matrixWorld.clone()
+                cachedWorldMatrixInverseRef.current = new THREE.Matrix4()
+                    .copy(planeMesh.matrixWorld)
+                    .invert()
+            }
+
+            const worldMatrix = cachedWorldMatrixRef.current
+            const worldMatrixInverse = cachedWorldMatrixInverseRef.current
 
             const localPoint = point.clone().applyMatrix4(worldMatrixInverse)
             const localNormal = normal
@@ -124,6 +147,37 @@ const DrawLine = ({ id }) => {
             return {
                 mirroredPoint,
                 mirroredNormal,
+            }
+        },
+        []
+    )
+
+    const generateCirclePointsWorld2 = useCallback(
+        (center, normal, radius, segments = 64) => {
+            const circlePoints = []
+            const circleNormals = []
+
+            const tempVector = new THREE.Vector3()
+            const tempQuaternion = new THREE.Quaternion()
+
+            const zAxis = new THREE.Vector3(0, 0, 1)
+            tempQuaternion.setFromUnitVectors(zAxis, normal)
+
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * Math.PI * 2
+                tempVector.set(
+                    radius * Math.cos(angle),
+                    radius * Math.sin(angle),
+                    0
+                )
+                tempVector.applyQuaternion(tempQuaternion).add(center)
+                circlePoints.push(tempVector.clone())
+                circleNormals.push(normal.clone())
+            }
+
+            return {
+                circlePoints,
+                circleNormals,
             }
         },
         []
@@ -160,7 +214,6 @@ const DrawLine = ({ id }) => {
         []
     )
 
-    // Square
     const generateSquarePointsWorld = useCallback(
         (
             center,
@@ -174,55 +227,49 @@ const DrawLine = ({ id }) => {
             const tempVector = new THREE.Vector3()
             const tempQuaternion = new THREE.Quaternion()
 
-            // Align local XY plane with the normal
             const zAxis = new THREE.Vector3(0, 0, 1)
             tempQuaternion.setFromUnitVectors(zAxis, normal)
 
-            // Square side length from radius (radius = half diagonal)
-            const sideLength = radius * Math.sqrt(2) // so diagonal = 2*radius
+            const sideLength = radius * Math.sqrt(2)
             const halfSide = sideLength / 2
 
-            // Corner radius for smooth rounding (adjust cornerRadiusFactor for more/less rounding)
-            const cornerRadiusFactor = 0.15 // 15% of side length
+            const cornerRadiusFactor = 0.15
             const cornerRadius = sideLength * cornerRadiusFactor
             const straightLength = halfSide - cornerRadius
 
-            // Four corners positions (in local space before rotation)
             const corners = [
                 {
                     x: straightLength,
                     y: straightLength,
                     startAngle: 0,
                     endAngle: Math.PI / 2,
-                }, // top-right
+                },
                 {
                     x: -straightLength,
                     y: straightLength,
                     startAngle: Math.PI / 2,
                     endAngle: Math.PI,
-                }, // top-left
+                },
                 {
                     x: -straightLength,
                     y: -straightLength,
                     startAngle: Math.PI,
                     endAngle: Math.PI * 1.5,
-                }, // bottom-left
+                },
                 {
                     x: straightLength,
                     y: -straightLength,
                     startAngle: Math.PI * 1.5,
                     endAngle: Math.PI * 2,
-                }, // bottom-right
+                },
             ]
 
             const pointsPerSide = Math.floor(segments / 4)
             const pointsPerCorner = cornerSegments
 
-            // Generate square with rounded corners
             corners.forEach((corner, idx) => {
                 const nextCorner = corners[(idx + 1) % 4]
 
-                // Rounded corner arc
                 for (let i = 0; i < pointsPerCorner; i++) {
                     const t = i / pointsPerCorner
                     const angle =
@@ -238,7 +285,6 @@ const DrawLine = ({ id }) => {
                     squareNormals.push(normal.clone())
                 }
 
-                // Straight edge to next corner
                 const edgeStart = {
                     x: corner.x + cornerRadius * Math.cos(corner.endAngle),
                     y: corner.y + cornerRadius * Math.sin(corner.endAngle),
@@ -265,7 +311,6 @@ const DrawLine = ({ id }) => {
                 }
             })
 
-            // Close the loop
             squarePoints.push(squarePoints[0].clone())
             squareNormals.push(normal.clone())
 
@@ -277,7 +322,6 @@ const DrawLine = ({ id }) => {
         []
     )
 
-    // Semi Circle close arc
     const generateSemiCirclePointsWorld = useCallback(
         (center, normal, radius, segments = 64) => {
             const semiCirclePoints = []
@@ -286,14 +330,12 @@ const DrawLine = ({ id }) => {
             const tempVector = new THREE.Vector3()
             const tempQuaternion = new THREE.Quaternion()
 
-            // Align local XY plane with the normal
             const zAxis = new THREE.Vector3(0, 0, 1)
             tempQuaternion.setFromUnitVectors(zAxis, normal)
 
-            // Semi-circle arc (top half, 180 degrees)
-            const arcSegments = Math.floor(segments * 0.6) // 60% for the arc
+            const arcSegments = Math.floor(segments * 0.6)
             for (let i = 0; i <= arcSegments; i++) {
-                const angle = Math.PI + (i / arcSegments) * Math.PI // from 180° to 360° (top half)
+                const angle = Math.PI + (i / arcSegments) * Math.PI
                 tempVector.set(
                     radius * Math.cos(angle),
                     radius * Math.sin(angle),
@@ -304,21 +346,15 @@ const DrawLine = ({ id }) => {
                 semiCircleNormals.push(normal.clone())
             }
 
-            // Straight base line (bottom, closing the semi-circle)
-            const baseSegments = Math.floor(segments * 0.4) // 40% for the base
+            const baseSegments = Math.floor(segments * 0.4)
             for (let i = 1; i < baseSegments; i++) {
                 const t = i / baseSegments
-                tempVector.set(
-                    radius - t * (2 * radius), // from right (-radius) to left (+radius)
-                    0,
-                    0
-                )
+                tempVector.set(radius - t * (2 * radius), 0, 0)
                 tempVector.applyQuaternion(tempQuaternion).add(center)
                 semiCirclePoints.push(tempVector.clone())
                 semiCircleNormals.push(normal.clone())
             }
 
-            // Close the loop
             semiCirclePoints.push(semiCirclePoints[0].clone())
             semiCircleNormals.push(normal.clone())
 
@@ -330,7 +366,6 @@ const DrawLine = ({ id }) => {
         []
     )
 
-    // Semi circle opened arc
     const generateSemiCircleOpenArcWorld = useCallback(
         (center, normal, radius, segments = 64) => {
             const arcPoints = []
@@ -342,9 +377,8 @@ const DrawLine = ({ id }) => {
             const zAxis = new THREE.Vector3(0, 0, 1)
             tempQuaternion.setFromUnitVectors(zAxis, normal)
 
-            // Just the arc, no closing line
             for (let i = 0; i <= segments; i++) {
-                const angle = Math.PI + (i / segments) * Math.PI // 180° arc
+                const angle = Math.PI + (i / segments) * Math.PI
                 tempVector.set(
                     radius * Math.cos(angle),
                     radius * Math.sin(angle),
@@ -362,6 +396,32 @@ const DrawLine = ({ id }) => {
         },
         []
     )
+
+    // Apply tension to points
+    const applyTensionToPoints = useCallback((points, tensionValue) => {
+        if (points.length < 2) return points
+
+        const tensionedPoints = []
+        const start = points[0]
+        const end = points[points.length - 1]
+
+        tensionedPoints.push(start.clone())
+
+        for (let i = 1; i < points.length - 1; i++) {
+            const t = i / (points.length - 1)
+            const straightPoint = new THREE.Vector3().lerpVectors(start, end, t)
+            const tensionedPoint = new THREE.Vector3().lerpVectors(
+                points[i],
+                straightPoint,
+                tensionValue
+            )
+            tensionedPoints.push(tensionedPoint)
+        }
+
+        tensionedPoints.push(end.clone())
+
+        return tensionedPoints
+    }, [])
 
     const smoothPoints = useCallback((points, percentage) => {
         if (percentage === 0 || points.length < 3) return points
@@ -493,28 +553,35 @@ const DrawLine = ({ id }) => {
             case 'flat':
                 material = new THREE.MeshBasicMaterial({
                     color: new THREE.Color(strokeColor),
-                    wireframe: false,
-                    transparent: true,
+                    transparent: strokeOpacity < 1,
                     opacity: strokeOpacity,
                     side: THREE.DoubleSide,
-                    forceSinglePass: true,
                     depthTest: true,
-                    depthWrite: true,
-                    // flatShading: true,
+                    depthWrite: strokeOpacity >= 1,
+                    blending:
+                        strokeOpacity < 1
+                            ? THREE.AdditiveBlending
+                            : THREE.NormalBlending,
                 })
                 break
 
             case 'shaded':
                 material = new THREE.MeshStandardMaterial({
                     color: new THREE.Color(strokeColor),
-                    wireframe: false,
-                    transparent: true,
+                    transparent: strokeOpacity < 1,
                     opacity: strokeOpacity,
                     side: THREE.DoubleSide,
-                    forceSinglePass: true,
                     depthTest: true,
-                    depthWrite: true,
-                    // flatShading: true,
+                    depthWrite: strokeOpacity >= 1,
+                    metalness: 0.0,
+                    roughness: 1.0,
+                    alphaToCoverage: true,
+                    premultipliedAlpha: false,
+                    blending:
+                        strokeOpacity < 1
+                            ? THREE.NormalBlending
+                            : THREE.NormalBlending,
+                    flatShading: true,
                 })
                 break
 
@@ -529,7 +596,6 @@ const DrawLine = ({ id }) => {
                     forceSinglePass: true,
                     depthTest: true,
                     depthWrite: true,
-                    // flatShading: true,
                     emissiveIntensity: 1,
                 })
                 break
@@ -539,9 +605,365 @@ const DrawLine = ({ id }) => {
         }
 
         const mesh = new THREE.Mesh(geometry, material)
-        // mesh.layers.set(1)
         scene.add(mesh)
         return mesh
+    }
+
+    const startHoldTimer = (point) => {
+        // ONLY start hold timer for free_hand drawing
+        if (drawShapeType !== 'free_hand') return
+
+        lastPointRef.current = point.clone()
+
+        holdTimerRef.current = setTimeout(() => {
+            // After 5 seconds, enable tension mode
+            tensionModeRef.current = true
+
+            // Store original smoothed points and EXACT stroke widths
+            if (pointsRef.current.length > 0) {
+                const smoothed = smoothPoints(
+                    [...pointsRef.current],
+                    SMOOTH_PERCENTAGE
+                )
+                const smoothedPressures = smoothArray(
+                    [...pressuresRef.current],
+                    SMOOTH_PERCENTAGE
+                )
+
+                originalPointsRef.current = smoothed.map((p) => p.clone())
+                originalPressuresRef.current = [...smoothedPressures]
+                originalNormalsRef.current = [...normalsRef.current]
+
+                // Calculate and store exact stroke widths for each point
+                originalStrokeWidthsRef.current = []
+                for (let i = 0; i < smoothed.length; i++) {
+                    let taperFactor = 1
+                    if (strokeType === 'taper') {
+                        const t = i / (smoothed.length - 1)
+                        const taperAmount = 1.0
+                        taperFactor =
+                            1 -
+                            taperAmount +
+                            taperAmount * Math.sin(t * Math.PI)
+                    }
+
+                    const effectivePressure = smoothedPressures[i] * taperFactor
+                    const { w, h } = getAdaptiveStrokWidth(
+                        effectivePressure,
+                        strokeWidth
+                    )
+                    originalStrokeWidthsRef.current.push({ w, h })
+                }
+
+                // Store original mirror data for tension
+                const activeMirrorModes = isMirroring
+                    ? getActiveMirrorModes()
+                    : []
+                originalMirrorDataRef.current = {}
+
+                activeMirrorModes.forEach((mode) => {
+                    const mirrorData = mirrorDataRef.current[mode]
+                    if (mirrorData && mirrorData.points.length > 0) {
+                        const smoothedMirrorPoints = smoothPoints(
+                            [...mirrorData.points],
+                            SMOOTH_PERCENTAGE
+                        )
+                        const smoothedMirrorPressures = smoothArray(
+                            [...mirrorData.pressures],
+                            SMOOTH_PERCENTAGE
+                        )
+
+                        originalMirrorDataRef.current[mode] = {
+                            points: smoothedMirrorPoints.map((p) => p.clone()),
+                            pressures: [...smoothedMirrorPressures],
+                            normals: [...mirrorData.normals],
+                            strokeWidths: [],
+                        }
+
+                        // Calculate and store exact stroke widths for mirror points
+                        for (let i = 0; i < smoothedMirrorPoints.length; i++) {
+                            let taperFactor = 1
+                            if (strokeType === 'taper') {
+                                const t = i / (smoothedMirrorPoints.length - 1)
+                                const taperAmount = 1.0
+                                taperFactor =
+                                    1 -
+                                    taperAmount +
+                                    taperAmount * Math.sin(t * Math.PI)
+                            }
+
+                            const effectivePressure =
+                                smoothedMirrorPressures[i] * taperFactor
+                            const { w, h } = getAdaptiveStrokWidth(
+                                effectivePressure,
+                                strokeWidth
+                            )
+                            originalMirrorDataRef.current[
+                                mode
+                            ].strokeWidths.push({ w, h })
+                        }
+                    }
+                })
+
+                // console.log(
+                //     '🎯 Tension mode ON (free_hand only)! Points:',
+                //     originalPointsRef.current.length
+                // )
+            }
+        }, HOLD_DURATION)
+    }
+
+    const clearHoldTimer = () => {
+        if (holdTimerRef.current) {
+            clearTimeout(holdTimerRef.current)
+            holdTimerRef.current = null
+        }
+        lastPointRef.current = null
+    }
+
+    const updateTensionAndLine = useCallback(
+        (clientY) => {
+            if (
+                !tensionModeRef.current ||
+                originalPointsRef.current.length === 0
+            ) {
+                return
+            }
+
+            // Calculate tension based on screen Y position
+            const deltaY = initialTensionYRef.current - clientY
+
+            let newTension = 0.5 + deltaY * TENSION_SENSITIVITY
+            newTension = Math.max(0, Math.min(1, newTension))
+
+            setTension(newTension)
+            // console.log('Updating tension:', newTension.toFixed(2))
+
+            // Apply tension to the original smoothed points
+            const tensionedPoints = applyTensionToPoints(
+                originalPointsRef.current,
+                newTension
+            )
+
+            // Update the line with tensioned points and EXACT stored widths
+            if (
+                currentMeshRef.current &&
+                originalStrokeWidthsRef.current.length > 0
+            ) {
+                updateLineWithTensionAndStoredWidths(
+                    currentMeshRef.current,
+                    tensionedPoints,
+                    originalNormalsRef.current,
+                    originalStrokeWidthsRef.current
+                )
+            }
+
+            // Apply tension to mirror lines as well
+            const activeMirrorModes = isMirroring ? getActiveMirrorModes() : []
+            activeMirrorModes.forEach((mode) => {
+                const originalMirrorData = originalMirrorDataRef.current[mode]
+                if (originalMirrorData && mirrorMeshesRef.current[mode]) {
+                    const tensionedMirrorPoints = applyTensionToPoints(
+                        originalMirrorData.points,
+                        newTension
+                    )
+
+                    updateLineWithTensionAndStoredWidths(
+                        mirrorMeshesRef.current[mode],
+                        tensionedMirrorPoints,
+                        originalMirrorData.normals,
+                        originalMirrorData.strokeWidths
+                    )
+                }
+            })
+        },
+        [applyTensionToPoints, isMirroring, getActiveMirrorModes]
+    )
+
+    // New function to update line with stored exact widths
+    function updateLineWithTensionAndStoredWidths(
+        mesh,
+        tensionedPoints,
+        normals,
+        storedWidths
+    ) {
+        if (tensionedPoints.length < 2) return
+
+        const geometry = mesh.geometry
+
+        // Filter the tensioned points
+        let pts = tensionedPoints
+        let finalNormals = normals
+        let finalWidths = storedWidths
+
+        // Apply filtering
+        if (pts.length >= 2) {
+            const filteredPts = [pts[0]]
+            const filteredNormals = [normals[0]]
+            const filteredWidths = [storedWidths[0]]
+
+            let lastKeptIndex = 0
+
+            for (let i = 1; i < pts.length; i++) {
+                if (
+                    pts[i].distanceTo(pts[lastKeptIndex]) >=
+                    OPTIMIZATION_THRESHOLD
+                ) {
+                    filteredPts.push(pts[i])
+                    filteredNormals.push(normals[i])
+                    filteredWidths.push(storedWidths[i])
+                    lastKeptIndex = i
+                }
+            }
+
+            if (lastKeptIndex !== pts.length - 1) {
+                filteredPts.push(pts[pts.length - 1])
+                filteredNormals.push(normals[normals.length - 1])
+                filteredWidths.push(storedWidths[storedWidths.length - 1])
+            }
+
+            pts = filteredPts
+            finalNormals = filteredNormals
+            finalWidths = filteredWidths
+        }
+
+        if (pts.length < 2) return
+
+        const positions = []
+        const meshNormals = []
+        const indices = []
+
+        const tangents = []
+        for (let i = 0; i < pts.length - 1; i++) {
+            tangents.push(
+                new THREE.Vector3().subVectors(pts[i + 1], pts[i]).normalize()
+            )
+        }
+
+        if (pts.length === 2 && tangents.length === 0) {
+            tangents.push(
+                new THREE.Vector3().subVectors(pts[1], pts[0]).normalize()
+            )
+        }
+
+        const transportedRights = []
+        let right = new THREE.Vector3()
+            .crossVectors(
+                finalNormals[0],
+                tangents[0] || new THREE.Vector3(1, 0, 0)
+            )
+            .normalize()
+
+        if (right.lengthSq() < 1e-6) {
+            right.set(0, 1, 0)
+            if (tangents.length > 0 && Math.abs(tangents[0].dot(right)) > 0.99)
+                right.set(1, 0, 0)
+            if (tangents.length > 0)
+                right.crossVectors(finalNormals[0], tangents[0]).normalize()
+            else
+                right
+                    .crossVectors(finalNormals[0], new THREE.Vector3(1, 0, 0))
+                    .normalize()
+        }
+        transportedRights.push(right.clone())
+
+        for (let i = 1; i < tangents.length; i++) {
+            const prevT = tangents[i - 1]
+            const currT = tangents[i]
+            const axis = new THREE.Vector3().crossVectors(prevT, currT)
+            const angle = Math.acos(Math.max(-1, Math.min(1, prevT.dot(currT))))
+
+            if (axis.lengthSq() < 1e-6 || angle === 0) {
+                transportedRights.push(transportedRights[i - 1].clone())
+            } else {
+                const q = new THREE.Quaternion().setFromAxisAngle(
+                    axis.normalize(),
+                    angle
+                )
+                transportedRights.push(
+                    transportedRights[i - 1]
+                        .clone()
+                        .applyQuaternion(q)
+                        .normalize()
+                )
+            }
+        }
+
+        for (let i = 0; i < pts.length; i++) {
+            const curr = pts[i]
+            const tangent =
+                i === pts.length - 1
+                    ? tangents[i - 1]
+                    : tangents[i] || tangents[0]
+            const rightVec =
+                transportedRights[i] ||
+                transportedRights[transportedRights.length - 1]
+            const up = new THREE.Vector3()
+                .crossVectors(tangent, rightVec)
+                .normalize()
+
+            // Use stored exact widths
+            const widthIndex = Math.min(i, finalWidths.length - 1)
+            const halfW = finalWidths[widthIndex].w
+            const halfH = finalWidths[widthIndex].h
+
+            const tl = new THREE.Vector3()
+                .copy(curr)
+                .addScaledVector(rightVec, -halfW)
+                .addScaledVector(up, halfH)
+            const tr = new THREE.Vector3()
+                .copy(curr)
+                .addScaledVector(rightVec, halfW)
+                .addScaledVector(up, halfH)
+            const br = new THREE.Vector3()
+                .copy(curr)
+                .addScaledVector(rightVec, halfW)
+                .addScaledVector(up, -halfH)
+            const bl = new THREE.Vector3()
+                .copy(curr)
+                .addScaledVector(rightVec, -halfW)
+                .addScaledVector(up, -halfH)
+
+            const normal = finalNormals[i].clone()
+            const baseIdx = positions.length / 3
+
+            ;[tl, tr, br, bl, tl, tr, br, bl].forEach((v) => {
+                positions.push(v.x, v.y, v.z)
+                meshNormals.push(normal.x, normal.y, normal.z)
+            })
+
+            if (i > 0) {
+                const prevBase = baseIdx - 4
+                indices.push(prevBase, prevBase + 1, baseIdx + 1)
+                indices.push(prevBase, baseIdx + 1, baseIdx)
+                indices.push(prevBase + 1, prevBase + 2, baseIdx + 2)
+                indices.push(prevBase + 1, baseIdx + 2, baseIdx + 1)
+                indices.push(prevBase + 2, prevBase + 3, baseIdx + 3)
+                indices.push(prevBase + 2, baseIdx + 3, baseIdx + 2)
+                indices.push(prevBase + 3, prevBase, baseIdx)
+                indices.push(prevBase + 3, baseIdx, baseIdx + 3)
+            }
+        }
+
+        geometry.setAttribute(
+            'position',
+            new THREE.Float32BufferAttribute(positions, 3)
+        )
+        geometry.setAttribute(
+            'normal',
+            new THREE.Float32BufferAttribute(meshNormals, 3)
+        )
+
+        geometry.setIndex(indices)
+
+        geometry.attributes.position.needsUpdate = true
+        geometry.attributes.normal.needsUpdate = true
+        geometry.index.needsUpdate = true
+        geometry.setDrawRange(0, indices.length)
+
+        if (mesh.material) {
+            mesh.material.needsUpdate = true
+        }
     }
 
     function updateLine(mesh, rawPts, pressuresArr, normalsArr) {
@@ -553,9 +975,19 @@ const DrawLine = ({ id }) => {
         let pressures = pressuresArr
         let finalNormals = normalsArr
 
-        if (drawShape === 'free_hand') {
+        if (drawShapeType === 'free_hand' && !tensionModeRef.current) {
             pts = smoothPoints(rawPts, SMOOTH_PERCENTAGE)
             pressures = smoothArray(pressuresArr, SMOOTH_PERCENTAGE)
+            const filteredResult = filterPoints(
+                pts,
+                pressures,
+                normalsArr,
+                OPTIMIZATION_THRESHOLD
+            )
+            pts = filteredResult.filteredPts
+            pressures = filteredResult.filteredPressures
+            finalNormals = filteredResult.filteredNormals
+        } else if (drawShapeType === 'straight') {
             const filteredResult = filterPoints(
                 pts,
                 pressures,
@@ -654,8 +1086,6 @@ const DrawLine = ({ id }) => {
                 pressures[i] * (strokeType === 'taper' ? taperFactor : 1)
 
             let { w, h } = getAdaptiveStrokWidth(effectivePressure, strokeWidth)
-            // const halfW = (effectivePressure * strokeWidth) / 2
-            // const halfH = (effectivePressure * strokeWidth) / 2
 
             const halfW = w
             const halfH = h
@@ -717,39 +1147,52 @@ const DrawLine = ({ id }) => {
         if (mesh.material) {
             mesh.material.color.copy(color)
             mesh.material.opacity = strokeOpacity
-            // mesh.material.flatShading = true
-            mesh.material.needsUpdate = true
+            mesh.material.flatShading = true
+            // mesh.material.needsUpdate = true
         }
     }
 
     function startDrawing(event) {
         if (!planeRef.current) return
 
-        isDrawing = true
-        points = []
-        pressures = []
-        normals = []
-        mirrorData = {}
+        isDrawingRef.current = true
+        tensionModeRef.current = false
+        setTension(0.5)
+        originalPointsRef.current = []
+        originalPressuresRef.current = []
+        originalNormalsRef.current = []
+        originalStrokeWidthsRef.current = []
+        originalMirrorDataRef.current = {} // Clear mirror tension data
+        pointsRef.current = []
+        pressuresRef.current = []
+        normalsRef.current = []
+        mirrorDataRef.current = {}
 
-        Object.values(mirrorMeshes).forEach((mesh) => {
+        // Clear caches
+        // drawPointCountRef.current = 0
+        cachedWorldMatrixRef.current = null
+        cachedWorldMatrixInverseRef.current = null
+
+        Object.values(mirrorMeshesRef.current).forEach((mesh) => {
             scene.remove(mesh)
             if (mesh.geometry) mesh.geometry.dispose()
             if (mesh.material) mesh.material.dispose()
         })
-        mirrorMeshes = {}
+        mirrorMeshesRef.current = {}
 
-        const { point, normal } = getPlaneIntersection(event)
-        if (!point) return
+        const intersection = getPlaneIntersection(event)
+        if (!intersection) return
+        const { point, normal } = intersection
 
-        startPoint = point.clone()
-        currentNormal = normal.clone()
-        currentMesh = createInitialLineMesh()
+        startPointRef.current = point.clone()
+        currentNormalRef.current = normal.clone()
+        currentMeshRef.current = createInitialLineMesh()
 
         const activeMirrorModes = isMirroring ? getActiveMirrorModes() : []
 
         activeMirrorModes.forEach((mode) => {
-            mirrorMeshes[mode] = createInitialLineMesh()
-            mirrorData[mode] = {
+            mirrorMeshesRef.current[mode] = createInitialLineMesh()
+            mirrorDataRef.current[mode] = {
                 points: [],
                 pressures: [],
                 normals: [],
@@ -758,29 +1201,33 @@ const DrawLine = ({ id }) => {
 
         const pressure = pressureMode ? event.pressure : 1.0
 
-        points.push(startPoint.clone())
-        pressures.push(pressure)
-        normals.push(currentNormal)
+        pointsRef.current.push(startPointRef.current.clone())
+        pressuresRef.current.push(pressure)
+        normalsRef.current.push(currentNormalRef.current)
 
         activeMirrorModes.forEach((mode) => {
             const { mirroredPoint, mirroredNormal } = getMirroredPoint(
-                startPoint,
-                currentNormal,
+                startPointRef.current,
+                currentNormalRef.current,
                 mode,
                 planeRef.current
             )
-            mirrorData[mode].points.push(mirroredPoint.clone())
-            mirrorData[mode].pressures.push(pressure)
-            mirrorData[mode].normals.push(mirroredNormal)
+            mirrorDataRef.current[mode].points.push(mirroredPoint.clone())
+            mirrorDataRef.current[mode].pressures.push(pressure)
+            mirrorDataRef.current[mode].normals.push(mirroredNormal)
         })
 
-        if (drawShape === 'free_hand') {
+        // Start hold timer (ONLY for free_hand)
+        startHoldTimer(startPointRef.current)
+        initialTensionYRef.current = event.clientY
+
+        if (drawShapeType === 'free_hand') {
             const secondPoint = new THREE.Vector3()
-                .copy(startPoint)
+                .copy(startPointRef.current)
                 .addScalar(0.001)
-            points.push(secondPoint)
-            pressures.push(pressure)
-            normals.push(currentNormal)
+            pointsRef.current.push(secondPoint)
+            pressuresRef.current.push(pressure)
+            normalsRef.current.push(currentNormalRef.current)
 
             activeMirrorModes.forEach((mode) => {
                 const {
@@ -788,22 +1235,27 @@ const DrawLine = ({ id }) => {
                     mirroredNormal: mirrorSecondNormal,
                 } = getMirroredPoint(
                     secondPoint,
-                    currentNormal,
+                    currentNormalRef.current,
                     mode,
                     planeRef.current
                 )
-                mirrorData[mode].points.push(mirrorSecondPoint)
-                mirrorData[mode].pressures.push(pressure)
-                mirrorData[mode].normals.push(mirrorSecondNormal)
+                mirrorDataRef.current[mode].points.push(mirrorSecondPoint)
+                mirrorDataRef.current[mode].pressures.push(pressure)
+                mirrorDataRef.current[mode].normals.push(mirrorSecondNormal)
             })
         }
 
-        updateLine(currentMesh, points, pressures, normals)
+        updateLine(
+            currentMeshRef.current,
+            pointsRef.current,
+            pressuresRef.current,
+            normalsRef.current
+        )
 
         activeMirrorModes.forEach((mode) => {
-            const data = mirrorData[mode]
+            const data = mirrorDataRef.current[mode]
             updateLine(
-                mirrorMeshes[mode],
+                mirrorMeshesRef.current[mode],
                 data.points,
                 data.pressures,
                 data.normals
@@ -859,7 +1311,6 @@ const DrawLine = ({ id }) => {
             .clone()
             .addScaledVector(snappedDirection, length)
 
-        // Interpolate between startPoint and snappedEnd
         const interpolatedPoints = []
         const numSegments = Math.max(1, Math.ceil(length / pointDensity))
         for (let i = 0; i <= numSegments; i++) {
@@ -877,34 +1328,52 @@ const DrawLine = ({ id }) => {
     }
 
     function getPlaneBasis(normal, u, v) {
-        // Create any vector not parallel to the normal
         const temp =
             Math.abs(normal.x) < 0.9
                 ? new THREE.Vector3(1, 0, 0)
                 : new THREE.Vector3(0, 1, 0)
 
-        // Compute u and v as orthogonal vectors in the plane
-        u.copy(temp).cross(normal).normalize() // u = temp × normal
-        v.copy(normal).cross(u).normalize() // v = normal × u
+        u.copy(temp).cross(normal).normalize()
+        v.copy(normal).cross(u).normalize()
     }
 
     function continueDrawing(event) {
-        if (!isDrawing || !planeRef.current) return
-        const { point, normal } = getPlaneIntersection(event)
-        if (!point) return
+        if (!isDrawingRef.current || !planeRef.current) return
+
+        // If in tension mode, update tension based on screen Y position (ONLY for free_hand)
+        if (tensionModeRef.current && drawShapeType === 'free_hand') {
+            updateTensionAndLine(event.clientY)
+            return // Don't do normal drawing
+        }
+
+        const intersection = getPlaneIntersection(event)
+        if (!intersection) return
+        const { point, normal } = intersection
+
+        // Check if pointer moved significantly in 3D space, reset hold timer (ONLY for free_hand)
+        if (drawShapeType === 'free_hand' && point && lastPointRef.current) {
+            const distance = point.distanceTo(lastPointRef.current)
+            if (distance > HOLD_THRESHOLD) {
+                clearHoldTimer()
+                startHoldTimer(point)
+                initialTensionYRef.current = event.clientY
+            }
+        }
 
         const pressure = pressureMode ? event.pressure : 1.0
         const activeMirrorModes = isMirroring ? getActiveMirrorModes() : []
 
-        if (drawShape === 'free_hand') {
+        if (drawShapeType === 'free_hand') {
             let newPoint = point.clone()
 
-            const last = points[points.length - 1]
+            const last = pointsRef.current[pointsRef.current.length - 1]
             if (newPoint.distanceTo(last) < DISTANCE_THRESHOLD) return
 
-            points.push(newPoint)
-            pressures.push(pressure)
-            normals.push(normal)
+            pointsRef.current.push(newPoint)
+            pressuresRef.current.push(pressure)
+            normalsRef.current.push(normal)
+
+            // drawPointCountRef.current++
 
             activeMirrorModes.forEach((mode) => {
                 const { mirroredPoint, mirroredNormal } = getMirroredPoint(
@@ -913,41 +1382,47 @@ const DrawLine = ({ id }) => {
                     mode,
                     planeRef.current
                 )
-                mirrorData[mode].points.push(mirroredPoint)
-                mirrorData[mode].pressures.push(pressure)
-                mirrorData[mode].normals.push(mirroredNormal)
+                mirrorDataRef.current[mode].points.push(mirroredPoint)
+                mirrorDataRef.current[mode].pressures.push(pressure)
+                mirrorDataRef.current[mode].normals.push(mirroredNormal)
             })
 
-            if (points.length > MAX_POINTS) {
-                points.shift()
-                pressures.shift()
-                normals.shift()
+            if (pointsRef.current.length > MAX_POINTS) {
+                pointsRef.current.shift()
+                pressuresRef.current.shift()
+                normalsRef.current.shift()
                 activeMirrorModes.forEach((mode) => {
-                    mirrorData[mode].points.shift()
-                    mirrorData[mode].pressures.shift()
-                    mirrorData[mode].normals.shift()
+                    mirrorDataRef.current[mode].points.shift()
+                    mirrorDataRef.current[mode].pressures.shift()
+                    mirrorDataRef.current[mode].normals.shift()
                 })
             }
 
-            updateLine(currentMesh, points, pressures, normals)
+            updateLine(
+                currentMeshRef.current,
+                pointsRef.current,
+                pressuresRef.current,
+                normalsRef.current
+            )
 
+            // Skip first 3 points for mirror to avoid initial jerk
+            // if (drawPointCountRef.current > 3) {
             activeMirrorModes.forEach((mode) => {
-                const data = mirrorData[mode]
+                const data = mirrorDataRef.current[mode]
                 updateLine(
-                    mirrorMeshes[mode],
+                    mirrorMeshesRef.current[mode],
                     data.points,
                     data.pressures,
                     data.normals
                 )
             })
-        } else if (drawShape === 'straight') {
-            if (!startPoint || !currentNormal) return
+            // }
+        } else if (drawShapeType === 'straight') {
+            if (!startPointRef.current || !currentNormalRef.current) return
 
-            // Snap point to constrained angle (max 45°)
-            // const snappedPoint = getSnappedPoint(startPoint, point, 1) // 45 is max angle for snapping
             const { snappedEnd, interpolatedPoints } =
                 getSnappedLinePointsInPlane({
-                    startPoint,
+                    startPoint: startPointRef.current,
                     currentPoint: point,
                     normal,
                     camera,
@@ -955,29 +1430,32 @@ const DrawLine = ({ id }) => {
                     pointDensity: 0.05,
                 })
 
-            // Only two points: start and snapped end
-            points.length = 0
-            points.push(startPoint.clone())
-            points.push(snappedEnd.clone())
+            pointsRef.current.length = 0
+            pointsRef.current.push(startPointRef.current.clone())
+            pointsRef.current.push(snappedEnd.clone())
 
-            pressures.length = 0
-            pressures.push(pressure)
-            pressures.push(pressure)
+            pressuresRef.current.length = 0
+            pressuresRef.current.push(pressure)
+            pressuresRef.current.push(pressure)
 
-            normals.length = 0
-            normals.push(currentNormal.clone())
-            normals.push(normal.clone())
+            normalsRef.current.length = 0
+            normalsRef.current.push(currentNormalRef.current.clone())
+            normalsRef.current.push(normal.clone())
 
-            updateLine(currentMesh, points, pressures, normals)
+            updateLine(
+                currentMeshRef.current,
+                pointsRef.current,
+                pressuresRef.current,
+                normalsRef.current
+            )
 
-            // Mirroring
             activeMirrorModes.forEach((mode) => {
                 const {
                     mirroredPoint: mirroredStart,
                     mirroredNormal: mirroredNormal1,
                 } = getMirroredPoint(
-                    startPoint,
-                    currentNormal,
+                    startPointRef.current,
+                    currentNormalRef.current,
                     mode,
                     planeRef.current
                 )
@@ -986,33 +1464,38 @@ const DrawLine = ({ id }) => {
                     mirroredNormal: mirroredNormal2,
                 } = getMirroredPoint(snappedEnd, normal, mode, planeRef.current)
 
-                mirrorData[mode].points = [mirroredStart, mirroredEnd]
-                mirrorData[mode].pressures = [pressure, pressure]
-                mirrorData[mode].normals = [mirroredNormal1, mirroredNormal2]
+                mirrorDataRef.current[mode].points = [
+                    mirroredStart,
+                    mirroredEnd,
+                ]
+                mirrorDataRef.current[mode].pressures = [pressure, pressure]
+                mirrorDataRef.current[mode].normals = [
+                    mirroredNormal1,
+                    mirroredNormal2,
+                ]
 
                 updateLine(
-                    mirrorMeshes[mode],
-                    mirrorData[mode].points,
-                    mirrorData[mode].pressures,
-                    mirrorData[mode].normals
+                    mirrorMeshesRef.current[mode],
+                    mirrorDataRef.current[mode].points,
+                    mirrorDataRef.current[mode].pressures,
+                    mirrorDataRef.current[mode].normals
                 )
             })
-        } else if (drawShape === 'circle') {
-            if (!startPoint || !currentNormal) return
+        } else if (drawShapeType === 'circle') {
+            if (!startPointRef.current || !currentNormalRef.current) return
 
-            const radius = startPoint.distanceTo(point)
-            const pressure = pressureMode ? event.pressure : 1.0
+            const radius = startPointRef.current.distanceTo(point)
 
             const { circlePoints, circleNormals } = generateCirclePointsWorld(
-                startPoint,
-                currentNormal,
+                startPointRef.current,
+                currentNormalRef.current,
                 radius
             )
 
             const circlePressures = Array(circlePoints.length).fill(pressure)
 
             updateLine(
-                currentMesh,
+                currentMeshRef.current,
                 circlePoints,
                 circlePressures,
                 circleNormals
@@ -1023,8 +1506,8 @@ const DrawLine = ({ id }) => {
                     mirroredPoint: mirrorCenter,
                     mirroredNormal: mirrorNormal,
                 } = getMirroredPoint(
-                    startPoint,
-                    currentNormal,
+                    startPointRef.current,
+                    currentNormalRef.current,
                     mode,
                     planeRef.current
                 )
@@ -1042,28 +1525,27 @@ const DrawLine = ({ id }) => {
                 ).fill(pressure)
 
                 updateLine(
-                    mirrorMeshes[mode],
+                    mirrorMeshesRef.current[mode],
                     mirrorCirclePoints,
                     mirrorCirclePressures,
                     mirrorCircleNormals
                 )
             })
-        } else if (drawShape === 'square') {
-            if (!startPoint || !currentNormal) return
+        } else if (drawShapeType === 'square') {
+            if (!startPointRef.current || !currentNormalRef.current) return
 
-            const radius = startPoint.distanceTo(point)
-            const pressure = pressureMode ? event.pressure : 1.0
+            const radius = startPointRef.current.distanceTo(point)
 
             const { squarePoints, squareNormals } = generateSquarePointsWorld(
-                startPoint,
-                currentNormal,
+                startPointRef.current,
+                currentNormalRef.current,
                 radius
             )
 
             const squarePressures = Array(squarePoints.length).fill(pressure)
 
             updateLine(
-                currentMesh,
+                currentMeshRef.current,
                 squarePoints,
                 squarePressures,
                 squareNormals
@@ -1074,8 +1556,8 @@ const DrawLine = ({ id }) => {
                     mirroredPoint: mirrorCenter,
                     mirroredNormal: mirrorNormal,
                 } = getMirroredPoint(
-                    startPoint,
-                    currentNormal,
+                    startPointRef.current,
+                    currentNormalRef.current,
                     mode,
                     planeRef.current
                 )
@@ -1093,35 +1575,39 @@ const DrawLine = ({ id }) => {
                 ).fill(pressure)
 
                 updateLine(
-                    mirrorMeshes[mode],
+                    mirrorMeshesRef.current[mode],
                     mirrorCirclePoints,
                     mirrorCirclePressures,
                     mirrorCircleNormals
                 )
             })
-        } else if (drawShape === 'arc') {
-            if (!startPoint || !currentNormal) return
+        } else if (drawShapeType === 'arc') {
+            if (!startPointRef.current || !currentNormalRef.current) return
 
-            const radius = startPoint.distanceTo(point)
-            const pressure = pressureMode ? event.pressure : 1.0
+            const radius = startPointRef.current.distanceTo(point)
 
             const { arcPoints, arcNormals } = generateSemiCircleOpenArcWorld(
-                startPoint,
-                currentNormal,
+                startPointRef.current,
+                currentNormalRef.current,
                 radius
             )
 
             const arcPressures = Array(arcPoints.length).fill(pressure)
 
-            updateLine(currentMesh, arcPoints, arcPressures, arcNormals)
+            updateLine(
+                currentMeshRef.current,
+                arcPoints,
+                arcPressures,
+                arcNormals
+            )
 
             activeMirrorModes.forEach((mode) => {
                 const {
                     mirroredPoint: mirrorCenter,
                     mirroredNormal: mirrorNormal,
                 } = getMirroredPoint(
-                    startPoint,
-                    currentNormal,
+                    startPointRef.current,
+                    currentNormalRef.current,
                     mode,
                     planeRef.current
                 )
@@ -1139,7 +1625,7 @@ const DrawLine = ({ id }) => {
                 ).fill(pressure)
 
                 updateLine(
-                    mirrorMeshes[mode],
+                    mirrorMeshesRef.current[mode],
                     mirrorCirclePoints,
                     mirrorCirclePressures,
                     mirrorCircleNormals
@@ -1149,32 +1635,44 @@ const DrawLine = ({ id }) => {
     }
 
     function stopDrawing(event) {
-        if (!isDrawing || !planeRef.current) return
+        clearHoldTimer()
+
+        if (!isDrawingRef.current || !planeRef.current) return
+
+        // Exit tension mode
+        if (tensionModeRef.current) {
+            tensionModeRef.current = false
+            originalPointsRef.current = []
+            originalPressuresRef.current = []
+            originalNormalsRef.current = []
+            originalStrokeWidthsRef.current = []
+            originalMirrorDataRef.current = {} // Clear mirror tension data
+            // console.log(
+            //     '✅ Drawing finalized with tension:',
+            //     tension.toFixed(2)
+            // )
+        }
 
         const activeMirrorModes = isMirroring ? getActiveMirrorModes() : []
 
-        if (drawShape === 'free_hand' || drawShape === 'straight') {
-            if (!currentMesh || !startPoint || points.length < 2) {
-                if (currentMesh) scene.remove(currentMesh)
-                Object.values(mirrorMeshes).forEach((mesh) =>
+        if (drawShapeType === 'free_hand' || drawShapeType === 'straight') {
+            if (
+                !currentMeshRef.current ||
+                !startPointRef.current ||
+                pointsRef.current.length < 2
+            ) {
+                if (currentMeshRef.current) scene.remove(currentMeshRef.current)
+                Object.values(mirrorMeshesRef.current).forEach((mesh) =>
                     scene.remove(mesh)
                 )
-                currentMesh = null
-                mirrorMeshes = {}
-                startPoint = null
+                currentMeshRef.current = null
+                mirrorMeshesRef.current = {}
+                startPointRef.current = null
                 return
             }
 
-            let geometry = currentMesh.geometry
-            const oldMesh = currentMesh
-
-            const initialVertexCount = geometry.attributes.position.count
-            // console.log(`--- Simplification Start (Primary) ---`)
-            // console.log(`Initial Vertex Count: ${initialVertexCount}`)
-
-            // if (geometry.index) {
-            //     geometry.toNonIndexed()
-            // }
+            let geometry = currentMeshRef.current.geometry
+            const oldMesh = currentMeshRef.current
 
             const countAfterNonIndex = geometry.attributes.position.count
             const reductionCount = Math.floor(
@@ -1185,10 +1683,6 @@ const DrawLine = ({ id }) => {
             const simplifiedGeometry = modifier.modify(geometry, reductionCount)
             geometry.dispose()
             geometry = simplifiedGeometry
-
-            // console.log(`--- Simplification Result (Primary) ---`)
-            const finalVertexCount = geometry.attributes.position.count
-            // console.log(`Final Vertex Count: ${finalVertexCount}`)
 
             const pos = geometry.attributes.position
             const finalMeshNormals = new Float32Array(pos.count * 3)
@@ -1224,7 +1718,9 @@ const DrawLine = ({ id }) => {
             averageNormal.normalize()
 
             if (averageNormal.lengthSq() < 1e-6) {
-                averageNormal.copy(currentNormal || new THREE.Vector3(0, 0, 1))
+                averageNormal.copy(
+                    currentNormalRef.current || new THREE.Vector3(0, 0, 1)
+                )
             }
 
             for (let i = 0; i < pos.count / 3; i++) {
@@ -1260,28 +1756,35 @@ const DrawLine = ({ id }) => {
                 case 'flat':
                     finalMaterial = new THREE.MeshBasicMaterial({
                         color: new THREE.Color(strokeColor),
-                        wireframe: false,
-                        transparent: true,
+                        transparent: strokeOpacity < 1,
                         opacity: strokeOpacity,
                         side: THREE.DoubleSide,
-                        forceSinglePass: true,
                         depthTest: true,
-                        depthWrite: true,
-                        // flatShading: true,
+                        depthWrite: strokeOpacity >= 1,
+                        blending:
+                            strokeOpacity < 1
+                                ? THREE.AdditiveBlending
+                                : THREE.NormalBlending,
                     })
                     break
 
                 case 'shaded':
                     finalMaterial = new THREE.MeshStandardMaterial({
                         color: new THREE.Color(strokeColor),
-                        wireframe: false,
-                        transparent: true,
+                        transparent: strokeOpacity < 1,
                         opacity: strokeOpacity,
                         side: THREE.DoubleSide,
-                        forceSinglePass: true,
                         depthTest: true,
-                        depthWrite: true,
-                        // flatShading: true,
+                        depthWrite: strokeOpacity >= 1,
+                        metalness: 0.0,
+                        roughness: 1.0,
+                        alphaToCoverage: true,
+                        premultipliedAlpha: false,
+                        blending:
+                            strokeOpacity < 1
+                                ? THREE.NormalBlending
+                                : THREE.NormalBlending,
+                        flatShading: true,
                     })
                     break
 
@@ -1296,7 +1799,6 @@ const DrawLine = ({ id }) => {
                         forceSinglePass: true,
                         depthTest: true,
                         depthWrite: true,
-                        // flatShading: true,
                         emissiveIntensity: 1,
                     })
                     break
@@ -1315,15 +1817,19 @@ const DrawLine = ({ id }) => {
             newMesh.scale.copy(oldMesh.scale)
             newMesh.uuid = oldMesh.uuid
 
-            // console.log({ newMesh })
             newMesh.userData = {
                 type: 'Line',
+                // note_id: id,
+                pts: pointsRef.current,
+                normals: normalsRef.current,
+                pressures: pressuresRef.current,
                 opacity: strokeOpacity,
                 color: strokeColor,
-                pts: points,
-                pressures: pressures,
-                normals: normals,
                 width: strokeWidth,
+                stroke_type: strokeType,
+                uuid: newMesh.uuid,
+                shape_type: drawShapeType,
+                group_id: activeGroup,
                 position: {
                     x: 0,
                     y: 0,
@@ -1340,19 +1846,13 @@ const DrawLine = ({ id }) => {
                     y: 1,
                     z: 1,
                 },
-                stroke_type: 'cube',
-                uuid: newMesh.uuid,
             }
 
-            // newMesh.material.flatShading = true
             newMesh.material.needsUpdate = true
-            // newMesh.layers.set(1)
             scene.add(newMesh)
 
-            // console.log(`--- Simplification End (Primary) ---`)
-
             activeMirrorModes.forEach((mode) => {
-                const mirrorOldMesh = mirrorMeshes[mode]
+                const mirrorOldMesh = mirrorMeshesRef.current[mode]
                 if (!mirrorOldMesh) return
 
                 let mirrorGeometry = mirrorOldMesh.geometry
@@ -1367,28 +1867,35 @@ const DrawLine = ({ id }) => {
                     case 'flat':
                         mirrorFinalMaterial = new THREE.MeshBasicMaterial({
                             color: new THREE.Color(strokeColor),
-                            wireframe: false,
-                            transparent: true,
+                            transparent: strokeOpacity < 1,
                             opacity: strokeOpacity,
                             side: THREE.DoubleSide,
-                            forceSinglePass: true,
                             depthTest: true,
-                            depthWrite: true,
-                            // flatShading: true,
+                            depthWrite: strokeOpacity >= 1,
+                            blending:
+                                strokeOpacity < 1
+                                    ? THREE.AdditiveBlending
+                                    : THREE.NormalBlending,
                         })
                         break
 
                     case 'shaded':
                         mirrorFinalMaterial = new THREE.MeshStandardMaterial({
                             color: new THREE.Color(strokeColor),
-                            wireframe: false,
-                            transparent: true,
+                            transparent: strokeOpacity < 1,
                             opacity: strokeOpacity,
                             side: THREE.DoubleSide,
-                            forceSinglePass: true,
                             depthTest: true,
-                            depthWrite: true,
-                            // flatShading: true,
+                            depthWrite: strokeOpacity >= 1,
+                            metalness: 0.0,
+                            roughness: 1.0,
+                            alphaToCoverage: true,
+                            premultipliedAlpha: false,
+                            blending:
+                                strokeOpacity < 1
+                                    ? THREE.NormalBlending
+                                    : THREE.NormalBlending,
+                            flatShading: true,
                         })
                         break
 
@@ -1403,7 +1910,6 @@ const DrawLine = ({ id }) => {
                             forceSinglePass: true,
                             depthTest: true,
                             depthWrite: true,
-                            // flatShading: true,
                             emissiveIntensity: 1,
                         })
                         break
@@ -1415,7 +1921,6 @@ const DrawLine = ({ id }) => {
                 scene.remove(mirrorOldMesh)
 
                 if (mirrorOldMesh.material) {
-                    // mirrorOldMesh.dispose()
                     mirrorOldMesh.material.dispose()
                 }
                 const mirrorNewMesh = new THREE.Mesh(
@@ -1427,65 +1932,78 @@ const DrawLine = ({ id }) => {
                     type: 'Line',
                     isMirror: true,
                     mirrorMode: mode,
-                    pts: mirrorData[mode].points,
-                    pressures: mirrorData[mode].pressures,
-                    normals: mirrorData[mode].normals,
+                    pts: mirrorDataRef.current[mode].points,
+                    pressures: mirrorDataRef.current[mode].pressures,
+                    normals: mirrorDataRef.current[mode].normals,
                     width: strokeWidth,
                     uuid: mirrorNewMesh.uuid,
+                    group_id: activeGroup,
                 }
 
-                // mirrorNewMesh.material.flatShading = true
                 mirrorNewMesh.material.needsUpdate = true
-                // mirrorNewMesh.layers.set(1)
                 scene.add(mirrorNewMesh)
             })
-        } else if (drawShape === 'circle') {
+        } else if (drawShapeType === 'circle') {
+            const intersection = getPlaneIntersection(event)
             const lastPoint =
-                getPlaneIntersection(event)?.point || points[points.length - 1]
-            const radius = startPoint.distanceTo(lastPoint)
+                intersection?.point ||
+                pointsRef.current[pointsRef.current.length - 1]
+            const radius = startPointRef.current.distanceTo(lastPoint)
 
             const { circlePoints, circleNormals } = generateCirclePointsWorld(
-                startPoint,
-                currentNormal,
+                startPointRef.current,
+                currentNormalRef.current,
                 radius
             )
 
             const finalPressures = Array(circlePoints.length).fill(
-                pressures[0] || 1.0
+                pressuresRef.current[0] || 1.0
             )
 
-            updateLine(currentMesh, circlePoints, finalPressures, circleNormals)
+            updateLine(
+                currentMeshRef.current,
+                circlePoints,
+                finalPressures,
+                circleNormals
+            )
 
-            const oldMesh = currentMesh
-            let geometry = currentMesh.geometry
+            const oldMesh = currentMeshRef.current
+            let geometry = currentMeshRef.current.geometry
 
             let finalMaterial
             switch (activeMaterialType) {
                 case 'flat':
                     finalMaterial = new THREE.MeshBasicMaterial({
                         color: new THREE.Color(strokeColor),
-                        wireframe: false,
-                        transparent: true,
+                        transparent: strokeOpacity < 1,
                         opacity: strokeOpacity,
                         side: THREE.DoubleSide,
-                        forceSinglePass: true,
                         depthTest: true,
-                        depthWrite: true,
-                        // flatShading: true,
+                        depthWrite: strokeOpacity >= 1,
+                        blending:
+                            strokeOpacity < 1
+                                ? THREE.AdditiveBlending
+                                : THREE.NormalBlending,
                     })
                     break
 
                 case 'shaded':
                     finalMaterial = new THREE.MeshStandardMaterial({
                         color: new THREE.Color(strokeColor),
-                        wireframe: false,
-                        transparent: true,
+                        transparent: strokeOpacity < 1,
                         opacity: strokeOpacity,
                         side: THREE.DoubleSide,
-                        forceSinglePass: true,
                         depthTest: true,
-                        depthWrite: true,
-                        // flatShading: true,
+                        depthWrite: strokeOpacity >= 1,
+                        metalness: 0.0,
+                        roughness: 1.0,
+                        alphaToCoverage: true,
+                        premultipliedAlpha: false,
+                        blending:
+                            strokeOpacity < 1
+                                ? THREE.NormalBlending
+                                : THREE.NormalBlending,
+                        flatShading: true,
                     })
                     break
 
@@ -1500,7 +2018,6 @@ const DrawLine = ({ id }) => {
                         forceSinglePass: true,
                         depthTest: true,
                         depthWrite: true,
-                        // flatShading: true,
                         emissiveIntensity: 1,
                     })
                     break
@@ -1522,12 +2039,17 @@ const DrawLine = ({ id }) => {
 
             newMesh.userData = {
                 type: 'Line',
+                // note_id: id,
+                pts: pointsRef.current,
+                normals: normalsRef.current,
+                pressures: pressuresRef.current,
                 opacity: strokeOpacity,
                 color: strokeColor,
-                pts: circlePoints,
-                pressures: finalPressures,
-                normals: circleNormals,
                 width: strokeWidth,
+                stroke_type: strokeType,
+                uuid: newMesh.uuid,
+                shape_type: drawShapeType,
+                group_id: activeGroup,
                 position: {
                     x: 0,
                     y: 0,
@@ -1544,17 +2066,13 @@ const DrawLine = ({ id }) => {
                     y: 1,
                     z: 1,
                 },
-                stroke_type: 'cube',
-                uuid: newMesh.uuid,
             }
-            // finalMaterial.flatShading = true
             finalMaterial.needsUpdate = true
-            // newMesh.layers.set(1)
 
             scene.add(newMesh)
 
             activeMirrorModes.forEach((mode) => {
-                const mirrorOldMesh = mirrorMeshes[mode]
+                const mirrorOldMesh = mirrorMeshesRef.current[mode]
                 if (!mirrorOldMesh) return
 
                 let mirrorGeometry = mirrorOldMesh.geometry
@@ -1569,28 +2087,35 @@ const DrawLine = ({ id }) => {
                     case 'flat':
                         mirrorFinalMaterial = new THREE.MeshBasicMaterial({
                             color: new THREE.Color(strokeColor),
-                            wireframe: false,
-                            transparent: true,
+                            transparent: strokeOpacity < 1,
                             opacity: strokeOpacity,
                             side: THREE.DoubleSide,
-                            forceSinglePass: true,
                             depthTest: true,
-                            depthWrite: true,
-                            // flatShading: true,
+                            depthWrite: strokeOpacity >= 1,
+                            blending:
+                                strokeOpacity < 1
+                                    ? THREE.AdditiveBlending
+                                    : THREE.NormalBlending,
                         })
                         break
 
                     case 'shaded':
                         mirrorFinalMaterial = new THREE.MeshStandardMaterial({
                             color: new THREE.Color(strokeColor),
-                            wireframe: false,
-                            transparent: true,
+                            transparent: strokeOpacity < 1,
                             opacity: strokeOpacity,
                             side: THREE.DoubleSide,
-                            forceSinglePass: true,
                             depthTest: true,
-                            depthWrite: true,
-                            // flatShading: true,
+                            depthWrite: strokeOpacity >= 1,
+                            metalness: 0.0,
+                            roughness: 1.0,
+                            alphaToCoverage: true,
+                            premultipliedAlpha: false,
+                            blending:
+                                strokeOpacity < 1
+                                    ? THREE.NormalBlending
+                                    : THREE.NormalBlending,
+                            flatShading: true,
                         })
                         break
 
@@ -1605,7 +2130,6 @@ const DrawLine = ({ id }) => {
                             forceSinglePass: true,
                             depthTest: true,
                             depthWrite: true,
-                            // flatShading: true,
                             emissiveIntensity: 1,
                         })
                         break
@@ -1617,7 +2141,6 @@ const DrawLine = ({ id }) => {
                 scene.remove(mirrorOldMesh)
 
                 if (mirrorOldMesh.material) {
-                    // mirrorOldMesh.dispose()
                     mirrorOldMesh.material.dispose()
                 }
                 const mirrorNewMesh = new THREE.Mesh(
@@ -1629,71 +2152,79 @@ const DrawLine = ({ id }) => {
                     type: 'Line',
                     isMirror: true,
                     mirrorMode: mode,
-                    pts: mirrorData[mode].points,
-                    pressures: mirrorData[mode].pressures,
-                    normals: mirrorData[mode].normals,
+                    pts: mirrorDataRef.current[mode].points,
+                    pressures: mirrorDataRef.current[mode].pressures,
+                    normals: mirrorDataRef.current[mode].normals,
                     width: strokeWidth,
                     uuid: mirrorNewMesh.uuid,
+                    group_id: activeGroup,
                 }
 
-                // mirrorNewMesh.material.flatShading = true
                 mirrorNewMesh.material.needsUpdate = true
-                // mirrorNewMesh.layers.set(1)
 
                 scene.add(mirrorNewMesh)
             })
-        } else if (drawShape === 'square') {
+        } else if (drawShapeType === 'square') {
+            const intersection = getPlaneIntersection(event)
             const lastPoint =
-                getPlaneIntersection(event)?.point || points[points.length - 1]
-            const radius = startPoint.distanceTo(lastPoint)
+                intersection?.point ||
+                pointsRef.current[pointsRef.current.length - 1]
+            const radius = startPointRef.current.distanceTo(lastPoint)
 
             const { squarePoints, squareNormals } = generateSquarePointsWorld(
-                startPoint,
-                currentNormal,
+                startPointRef.current,
+                currentNormalRef.current,
                 radius
             )
 
             const squareFinalPressures = Array(squarePoints.length).fill(
-                pressures[0] || 1.0
+                pressuresRef.current[0] || 1.0
             )
 
             updateLine(
-                currentMesh,
+                currentMeshRef.current,
                 squarePoints,
                 squareFinalPressures,
                 squareNormals
             )
 
-            const oldMesh = currentMesh
-            let geometry = currentMesh.geometry
+            const oldMesh = currentMeshRef.current
+            let geometry = currentMeshRef.current.geometry
 
             let finalMaterial
             switch (activeMaterialType) {
                 case 'flat':
                     finalMaterial = new THREE.MeshBasicMaterial({
                         color: new THREE.Color(strokeColor),
-                        wireframe: false,
-                        transparent: true,
+                        transparent: strokeOpacity < 1,
                         opacity: strokeOpacity,
                         side: THREE.DoubleSide,
-                        forceSinglePass: true,
                         depthTest: true,
-                        depthWrite: true,
-                        // flatShading: true,
+                        depthWrite: strokeOpacity >= 1,
+                        blending:
+                            strokeOpacity < 1
+                                ? THREE.AdditiveBlending
+                                : THREE.NormalBlending,
                     })
                     break
 
                 case 'shaded':
                     finalMaterial = new THREE.MeshStandardMaterial({
                         color: new THREE.Color(strokeColor),
-                        wireframe: false,
-                        transparent: true,
+                        transparent: strokeOpacity < 1,
                         opacity: strokeOpacity,
                         side: THREE.DoubleSide,
-                        forceSinglePass: true,
                         depthTest: true,
-                        depthWrite: true,
-                        // flatShading: true,
+                        depthWrite: strokeOpacity >= 1,
+                        metalness: 0.0,
+                        roughness: 1.0,
+                        alphaToCoverage: true,
+                        premultipliedAlpha: false,
+                        blending:
+                            strokeOpacity < 1
+                                ? THREE.NormalBlending
+                                : THREE.NormalBlending,
+                        flatShading: true,
                     })
                     break
 
@@ -1708,7 +2239,6 @@ const DrawLine = ({ id }) => {
                         forceSinglePass: true,
                         depthTest: true,
                         depthWrite: true,
-                        // flatShading: true,
                         emissiveIntensity: 1,
                     })
                     break
@@ -1730,12 +2260,17 @@ const DrawLine = ({ id }) => {
 
             newMesh.userData = {
                 type: 'Line',
+                // note_id: id,
+                pts: pointsRef.current,
+                normals: normalsRef.current,
+                pressures: pressuresRef.current,
                 opacity: strokeOpacity,
                 color: strokeColor,
-                pts: squarePoints,
-                pressures: squareFinalPressures,
-                normals: squareNormals,
                 width: strokeWidth,
+                stroke_type: strokeType,
+                uuid: newMesh.uuid,
+                shape_type: drawShapeType,
+                group_id: activeGroup,
                 position: {
                     x: 0,
                     y: 0,
@@ -1752,17 +2287,13 @@ const DrawLine = ({ id }) => {
                     y: 1,
                     z: 1,
                 },
-                stroke_type: 'cube',
-                uuid: newMesh.uuid,
             }
-            // finalMaterial.flatShading = true
             finalMaterial.needsUpdate = true
-            // newMesh.layers.set(1)
 
             scene.add(newMesh)
 
             activeMirrorModes.forEach((mode) => {
-                const mirrorOldMesh = mirrorMeshes[mode]
+                const mirrorOldMesh = mirrorMeshesRef.current[mode]
                 if (!mirrorOldMesh) return
 
                 let mirrorGeometry = mirrorOldMesh.geometry
@@ -1777,28 +2308,35 @@ const DrawLine = ({ id }) => {
                     case 'flat':
                         mirrorFinalMaterial = new THREE.MeshBasicMaterial({
                             color: new THREE.Color(strokeColor),
-                            wireframe: false,
-                            transparent: true,
+                            transparent: strokeOpacity < 1,
                             opacity: strokeOpacity,
                             side: THREE.DoubleSide,
-                            forceSinglePass: true,
                             depthTest: true,
-                            depthWrite: true,
-                            // flatShading: true,
+                            depthWrite: strokeOpacity >= 1,
+                            blending:
+                                strokeOpacity < 1
+                                    ? THREE.AdditiveBlending
+                                    : THREE.NormalBlending,
                         })
                         break
 
                     case 'shaded':
                         mirrorFinalMaterial = new THREE.MeshStandardMaterial({
                             color: new THREE.Color(strokeColor),
-                            wireframe: false,
-                            transparent: true,
+                            transparent: strokeOpacity < 1,
                             opacity: strokeOpacity,
                             side: THREE.DoubleSide,
-                            forceSinglePass: true,
                             depthTest: true,
-                            depthWrite: true,
-                            // flatShading: true,
+                            depthWrite: strokeOpacity >= 1,
+                            metalness: 0.0,
+                            roughness: 1.0,
+                            alphaToCoverage: true,
+                            premultipliedAlpha: false,
+                            blending:
+                                strokeOpacity < 1
+                                    ? THREE.NormalBlending
+                                    : THREE.NormalBlending,
+                            flatShading: true,
                         })
                         break
 
@@ -1813,7 +2351,6 @@ const DrawLine = ({ id }) => {
                             forceSinglePass: true,
                             depthTest: true,
                             depthWrite: true,
-                            // flatShading: true,
                             emissiveIntensity: 1,
                         })
                         break
@@ -1821,11 +2358,9 @@ const DrawLine = ({ id }) => {
                     default:
                         break
                 }
-
                 scene.remove(mirrorOldMesh)
 
                 if (mirrorOldMesh.material) {
-                    // mirrorOldMesh.dispose()
                     mirrorOldMesh.material.dispose()
                 }
                 const mirrorNewMesh = new THREE.Mesh(
@@ -1837,272 +2372,78 @@ const DrawLine = ({ id }) => {
                     type: 'Line',
                     isMirror: true,
                     mirrorMode: mode,
-                    pts: mirrorData[mode].points,
-                    pressures: mirrorData[mode].pressures,
-                    normals: mirrorData[mode].normals,
+                    pts: mirrorDataRef.current[mode].points,
+                    pressures: mirrorDataRef.current[mode].pressures,
+                    normals: mirrorDataRef.current[mode].normals,
                     width: strokeWidth,
                     uuid: mirrorNewMesh.uuid,
+                    group_id: activeGroup,
                 }
 
-                // mirrorNewMesh.material.flatShading = true
                 mirrorNewMesh.material.needsUpdate = true
-                // mirrorNewMesh.layers.set(1)
                 scene.add(mirrorNewMesh)
             })
-        } else if (drawShape === 'square') {
+        } else if (drawShapeType === 'arc') {
+            const intersection = getPlaneIntersection(event)
             const lastPoint =
-                getPlaneIntersection(event)?.point || points[points.length - 1]
-            const radius = startPoint.distanceTo(lastPoint)
-
-            const { squarePoints, squareNormals } = generateSquarePointsWorld(
-                startPoint,
-                currentNormal,
-                radius
-            )
-
-            const squareFinalPressures = Array(squarePoints.length).fill(
-                pressures[0] || 1.0
-            )
-
-            updateLine(
-                currentMesh,
-                squarePoints,
-                squareFinalPressures,
-                squareNormals
-            )
-
-            const oldMesh = currentMesh
-            let geometry = currentMesh.geometry
-
-            let finalMaterial
-            switch (activeMaterialType) {
-                case 'flat':
-                    finalMaterial = new THREE.MeshBasicMaterial({
-                        color: new THREE.Color(strokeColor),
-                        wireframe: false,
-                        transparent: true,
-                        opacity: strokeOpacity,
-                        side: THREE.DoubleSide,
-                        forceSinglePass: true,
-                        depthTest: true,
-                        depthWrite: true,
-                        // flatShading: true,
-                    })
-                    break
-
-                case 'shaded':
-                    finalMaterial = new THREE.MeshStandardMaterial({
-                        color: new THREE.Color(strokeColor),
-                        wireframe: false,
-                        transparent: true,
-                        opacity: strokeOpacity,
-                        side: THREE.DoubleSide,
-                        forceSinglePass: true,
-                        depthTest: true,
-                        depthWrite: true,
-                        // flatShading: true,
-                    })
-                    break
-
-                case 'glow':
-                    finalMaterial = new THREE.MeshStandardMaterial({
-                        color: new THREE.Color(strokeColor),
-                        wireframe: false,
-                        emissive: new THREE.Color(strokeColor),
-                        transparent: true,
-                        opacity: strokeOpacity,
-                        side: THREE.DoubleSide,
-                        forceSinglePass: true,
-                        depthTest: true,
-                        depthWrite: true,
-                        // flatShading: true,
-                        emissiveIntensity: 1,
-                    })
-                    break
-
-                default:
-                    break
-            }
-
-            scene.remove(oldMesh)
-
-            const newMesh = new THREE.Mesh(geometry, finalMaterial)
-            geometry.computeBoundingBox()
-            geometry.computeBoundingSphere()
-
-            newMesh.position.copy(oldMesh.position)
-            newMesh.rotation.copy(oldMesh.rotation)
-            newMesh.scale.copy(oldMesh.scale)
-            newMesh.uuid = oldMesh.uuid
-
-            newMesh.userData = {
-                type: 'Line',
-                opacity: strokeOpacity,
-                color: strokeColor,
-                pts: squarePoints,
-                pressures: squareFinalPressures,
-                normals: squareNormals,
-                width: strokeWidth,
-                position: {
-                    x: 0,
-                    y: 0,
-                    z: 0,
-                },
-                rotation: {
-                    isEuler: true,
-                    _x: 0,
-                    _y: 0,
-                    _z: 0,
-                },
-                scale: {
-                    x: 1,
-                    y: 1,
-                    z: 1,
-                },
-                stroke_type: 'cube',
-                uuid: newMesh.uuid,
-            }
-            // finalMaterial.flatShading = true
-            finalMaterial.needsUpdate = true
-            // newMesh.layers.set(1)
-
-            scene.add(newMesh)
-
-            activeMirrorModes.forEach((mode) => {
-                const mirrorOldMesh = mirrorMeshes[mode]
-                if (!mirrorOldMesh) return
-
-                let mirrorGeometry = mirrorOldMesh.geometry
-
-                mirrorGeometry.computeVertexNormals()
-                mirrorGeometry.toNonIndexed()
-                mirrorGeometry.computeBoundingBox()
-                mirrorGeometry.computeBoundingSphere()
-
-                let mirrorFinalMaterial
-                switch (activeMaterialType) {
-                    case 'flat':
-                        mirrorFinalMaterial = new THREE.MeshBasicMaterial({
-                            color: new THREE.Color(strokeColor),
-                            wireframe: false,
-                            transparent: true,
-                            opacity: strokeOpacity,
-                            side: THREE.DoubleSide,
-                            forceSinglePass: true,
-                            depthTest: true,
-                            depthWrite: true,
-                            // flatShading: true,
-                        })
-                        break
-
-                    case 'shaded':
-                        mirrorFinalMaterial = new THREE.MeshStandardMaterial({
-                            color: new THREE.Color(strokeColor),
-                            wireframe: false,
-                            transparent: true,
-                            opacity: strokeOpacity,
-                            side: THREE.DoubleSide,
-                            forceSinglePass: true,
-                            depthTest: true,
-                            depthWrite: true,
-                            // flatShading: true,
-                        })
-                        break
-
-                    case 'glow':
-                        mirrorFinalMaterial = new THREE.MeshStandardMaterial({
-                            color: new THREE.Color(strokeColor),
-                            wireframe: false,
-                            emissive: new THREE.Color(strokeColor),
-                            transparent: true,
-                            opacity: strokeOpacity,
-                            side: THREE.DoubleSide,
-                            forceSinglePass: true,
-                            depthTest: true,
-                            depthWrite: true,
-                            // flatShading: true,
-                            emissiveIntensity: 1,
-                        })
-                        break
-
-                    default:
-                        break
-                }
-
-                scene.remove(mirrorOldMesh)
-
-                if (mirrorOldMesh.material) {
-                    // mirrorOldMesh.dispose()
-                    mirrorOldMesh.material.dispose()
-                }
-                const mirrorNewMesh = new THREE.Mesh(
-                    mirrorGeometry,
-                    mirrorFinalMaterial
-                )
-
-                mirrorNewMesh.userData = {
-                    type: 'Line',
-                    isMirror: true,
-                    mirrorMode: mode,
-                    pts: mirrorData[mode].points,
-                    pressures: mirrorData[mode].pressures,
-                    normals: mirrorData[mode].normals,
-                    width: strokeWidth,
-                    uuid: mirrorNewMesh.uuid,
-                }
-
-                // mirrorNewMesh.material.flatShading = true
-                mirrorNewMesh.material.needsUpdate = true
-                // mirrorNewMesh.layers.set(1)
-                scene.add(mirrorNewMesh)
-            })
-        } else if (drawShape === 'arc') {
-            const lastPoint =
-                getPlaneIntersection(event)?.point || points[points.length - 1]
-            const radius = startPoint.distanceTo(lastPoint)
+                intersection?.point ||
+                pointsRef.current[pointsRef.current.length - 1]
+            const radius = startPointRef.current.distanceTo(lastPoint)
 
             const { arcPoints, arcNormals } = generateSemiCircleOpenArcWorld(
-                startPoint,
-                currentNormal,
+                startPointRef.current,
+                currentNormalRef.current,
                 radius
             )
 
             const arcFinalPressures = Array(arcPoints.length).fill(
-                pressures[0] || 1.0
+                pressuresRef.current[0] || 1.0
             )
 
-            updateLine(currentMesh, arcPoints, arcFinalPressures, arcPoints)
+            updateLine(
+                currentMeshRef.current,
+                arcPoints,
+                arcFinalPressures,
+                arcNormals
+            )
 
-            const oldMesh = currentMesh
-            let geometry = currentMesh.geometry
+            const oldMesh = currentMeshRef.current
+            let geometry = currentMeshRef.current.geometry
 
             let finalMaterial
             switch (activeMaterialType) {
                 case 'flat':
                     finalMaterial = new THREE.MeshBasicMaterial({
                         color: new THREE.Color(strokeColor),
-                        wireframe: false,
-                        transparent: true,
+                        transparent: strokeOpacity < 1,
                         opacity: strokeOpacity,
                         side: THREE.DoubleSide,
-                        forceSinglePass: true,
                         depthTest: true,
-                        depthWrite: true,
-                        // flatShading: true,
+                        depthWrite: strokeOpacity >= 1,
+                        blending:
+                            strokeOpacity < 1
+                                ? THREE.AdditiveBlending
+                                : THREE.NormalBlending,
                     })
                     break
 
                 case 'shaded':
                     finalMaterial = new THREE.MeshStandardMaterial({
                         color: new THREE.Color(strokeColor),
-                        wireframe: false,
-                        transparent: true,
+                        transparent: strokeOpacity < 1,
                         opacity: strokeOpacity,
                         side: THREE.DoubleSide,
-                        forceSinglePass: true,
                         depthTest: true,
-                        depthWrite: true,
-                        // flatShading: true,
+                        depthWrite: strokeOpacity >= 1,
+                        metalness: 0.0,
+                        roughness: 1.0,
+                        alphaToCoverage: true,
+                        premultipliedAlpha: false,
+                        blending:
+                            strokeOpacity < 1
+                                ? THREE.NormalBlending
+                                : THREE.NormalBlending,
+                        flatShading: true,
                     })
                     break
 
@@ -2117,7 +2458,6 @@ const DrawLine = ({ id }) => {
                         forceSinglePass: true,
                         depthTest: true,
                         depthWrite: true,
-                        // flatShading: true,
                         emissiveIntensity: 1,
                     })
                     break
@@ -2139,12 +2479,17 @@ const DrawLine = ({ id }) => {
 
             newMesh.userData = {
                 type: 'Line',
+                // note_id: id,
+                pts: pointsRef.current,
+                normals: normalsRef.current,
+                pressures: pressuresRef.current,
                 opacity: strokeOpacity,
                 color: strokeColor,
-                pts: arcPoints,
-                pressures: arcFinalPressures,
-                normals: arcNormals,
                 width: strokeWidth,
+                stroke_type: strokeType,
+                uuid: newMesh.uuid,
+                shape_type: drawShapeType,
+                group_id: activeGroup,
                 position: {
                     x: 0,
                     y: 0,
@@ -2161,17 +2506,13 @@ const DrawLine = ({ id }) => {
                     y: 1,
                     z: 1,
                 },
-                stroke_type: 'cube',
-                uuid: newMesh.uuid,
             }
-            // finalMaterial.flatShading = true
             finalMaterial.needsUpdate = true
-            // newMesh.layers.set(1)
 
             scene.add(newMesh)
 
             activeMirrorModes.forEach((mode) => {
-                const mirrorOldMesh = mirrorMeshes[mode]
+                const mirrorOldMesh = mirrorMeshesRef.current[mode]
                 if (!mirrorOldMesh) return
 
                 let mirrorGeometry = mirrorOldMesh.geometry
@@ -2186,28 +2527,35 @@ const DrawLine = ({ id }) => {
                     case 'flat':
                         mirrorFinalMaterial = new THREE.MeshBasicMaterial({
                             color: new THREE.Color(strokeColor),
-                            wireframe: false,
-                            transparent: true,
+                            transparent: strokeOpacity < 1,
                             opacity: strokeOpacity,
                             side: THREE.DoubleSide,
-                            forceSinglePass: true,
                             depthTest: true,
-                            depthWrite: true,
-                            // flatShading: true,
+                            depthWrite: strokeOpacity >= 1,
+                            blending:
+                                strokeOpacity < 1
+                                    ? THREE.AdditiveBlending
+                                    : THREE.NormalBlending,
                         })
                         break
 
                     case 'shaded':
                         mirrorFinalMaterial = new THREE.MeshStandardMaterial({
                             color: new THREE.Color(strokeColor),
-                            wireframe: false,
-                            transparent: true,
+                            transparent: strokeOpacity < 1,
                             opacity: strokeOpacity,
                             side: THREE.DoubleSide,
-                            forceSinglePass: true,
                             depthTest: true,
-                            depthWrite: true,
-                            // flatShading: true,
+                            depthWrite: strokeOpacity >= 1,
+                            metalness: 0.0,
+                            roughness: 1.0,
+                            alphaToCoverage: true,
+                            premultipliedAlpha: false,
+                            blending:
+                                strokeOpacity < 1
+                                    ? THREE.NormalBlending
+                                    : THREE.NormalBlending,
+                            flatShading: true,
                         })
                         break
 
@@ -2233,7 +2581,6 @@ const DrawLine = ({ id }) => {
                 scene.remove(mirrorOldMesh)
 
                 if (mirrorOldMesh.material) {
-                    // mirrorOldMesh.dispose()
                     mirrorOldMesh.material.dispose()
                 }
                 const mirrorNewMesh = new THREE.Mesh(
@@ -2245,26 +2592,25 @@ const DrawLine = ({ id }) => {
                     type: 'Line',
                     isMirror: true,
                     mirrorMode: mode,
-                    pts: mirrorData[mode].points,
-                    pressures: mirrorData[mode].pressures,
-                    normals: mirrorData[mode].normals,
+                    pts: mirrorDataRef.current[mode].points,
+                    pressures: mirrorDataRef.current[mode].pressures,
+                    normals: mirrorDataRef.current[mode].normals,
                     width: strokeWidth,
                     uuid: mirrorNewMesh.uuid,
+                    group_id: activeGroup,
                 }
 
-                // mirrorNewMesh.material.flatShading = true
                 mirrorNewMesh.material.needsUpdate = true
-                // mirrorNewMesh.layers.set(1)
                 scene.add(mirrorNewMesh)
             })
         }
 
-        currentMesh = null
-        mirrorMeshes = {}
-        mirrorData = {}
-        startPoint = null
-        currentNormal = null
-        isDrawing = false
+        currentMeshRef.current = null
+        mirrorMeshesRef.current = {}
+        mirrorDataRef.current = {}
+        startPointRef.current = null
+        currentNormalRef.current = null
+        isDrawingRef.current = false
         // console.log(`--- Drawing End ---`)
     }
 
@@ -2300,6 +2646,13 @@ const DrawLine = ({ id }) => {
         [camera, gl]
     )
 
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            clearHoldTimer()
+        }
+    }, [])
+
     return (
         <>
             {dynamicDrawingPlaneMesh && (
@@ -2309,6 +2662,7 @@ const DrawLine = ({ id }) => {
                     onPointerDown={startDrawing}
                     onPointerMove={continueDrawing}
                     onPointerUp={stopDrawing}
+                    onPointerOut={stopDrawing}
                 />
             )}
         </>

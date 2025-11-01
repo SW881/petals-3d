@@ -1,57 +1,59 @@
 import { ColorPicker, useColor } from 'react-color-palette'
 import 'react-color-palette/css'
 
-import DrawIcon from '../svg-icons/DrawIcon'
-import ScaleIcon from '../svg-icons/ScaleIcon'
-import SelectIcon from '../svg-icons/SelectIcon'
-import EraserIcon from '../svg-icons/EraserIcon'
-import RotateIcon from '../svg-icons/RotateIcon'
 import SunIcon from '../svg-icons/SunIcon'
 import AddIcon from '../svg-icons/AddIcon'
+import ArcIcon from '../svg-icons/ArcIcon'
 import CopyIcon from '../svg-icons/CopyIcon'
-import FreeHandIcon from '../svg-icons/FreeHandIcon'
 import LinkIcon from '../svg-icons/LinkIcon'
+import DrawIcon from '../svg-icons/DrawIcon'
 import WidthIcon from '../svg-icons/WidthIcon'
-import TranslateIcon from '../svg-icons/TranslateIcon'
-import EraseGuideIcon from '../svg-icons/EraseGuideIcon'
+import ScaleIcon from '../svg-icons/ScaleIcon'
+import SelectIcon from '../svg-icons/SelectIcon'
+import SquareIcon from '../svg-icons/SquareIcon'
+import EraserIcon from '../svg-icons/EraserIcon'
+import RotateIcon from '../svg-icons/RotateIcon'
 import DeleteIcon from '../svg-icons/DeleteIcon'
 import RenderIcon from '../svg-icons/RenderIcon'
 import RenameIcon from '../svg-icons/RenameIcon'
 import CircleIcon from '../svg-icons/CircleIcon'
 import MirrorIcon from '../svg-icons/MirrorIcon'
 import EyeOpenIcon from '../svg-icons/EyeOpenIcon'
-import ColorSelectIcon from '../svg-icons/ColorSelectIcon'
 import OpacityIcon from '../svg-icons/OpacityIcon'
 import CorrectIcon from '../svg-icons/CorrectIcon'
-import StraightLineIcon from '../svg-icons/StraightLineIcon'
 import GroupingIcon from '../svg-icons/GroupingIcon'
 import EyeCloseIcon from '../svg-icons/EyeCloseIcon'
+import FreeHandIcon from '../svg-icons/FreeHandIcon'
 import LocalModeIcon from '../svg-icons/LocalModeIcon'
 import FlatShadeIcon from '../svg-icons/FlatShadeIcon'
 import GlowShadeIcon from '../svg-icons/GlowShadeIcon'
-import DrawGuidePlaneIcon from '../svg-icons/DrawGuidePlaneIcon'
+import TranslateIcon from '../svg-icons/TranslateIcon'
 import CubeStrokeIcon from '../svg-icons/CubeStrokeIcon'
 import GlobalModeIcon from '../svg-icons/GlobalModeIcon'
 import BeltStrokeIcon from '../svg-icons/BeltStrokeIcon'
-import BendGuidePlaneIcon from '../svg-icons/BendGuidePlaneIcon'
+import EraseGuideIcon from '../svg-icons/EraseGuideIcon'
 import SceneOptionIcon from '../svg-icons/SceneOptionIcon'
 import TaperStrokeIcon from '../svg-icons/TaperStrokeIcon'
+import ColorSelectIcon from '../svg-icons/ColorSelectIcon'
 import PaintStrokeIcon from '../svg-icons/PaintStrokeIcon'
 import StableStrokIcon from '../svg-icons/StableStrokIcon'
 import RespondShadeIcon from '../svg-icons/RespondShadeIcon'
-import SquareIcon from '../svg-icons/SquareIcon'
-import ArcIcon from '../svg-icons/ArcIcon'
-import CopyGroups from './canvas/groups/CopyGroups'
-import RenameGroups from './canvas/groups/RenameGroups'
-import DeleteGroups from './canvas/groups/DeleteGroups'
+import StraightLineIcon from '../svg-icons/StraightLineIcon'
+import DrawGuidePlaneIcon from '../svg-icons/DrawGuidePlaneIcon'
+import BendGuidePlaneIcon from '../svg-icons/BendGuidePlaneIcon'
 
 import AddNewGroups from './canvas/groups/AddNewGroups'
+import DeleteGroups from './canvas/groups/DeleteGroups'
+import RenameGroups from './canvas/groups/RenameGroups'
+import CopyGroups from './canvas/groups/CopyGroups'
+
 import { saveGroupToIndexDB } from '../../helpers/sceneFunction'
 import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
 import { canvasViewStore } from '../../hooks/useCanvasViewStore'
 import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
-
 import { dashboardStore } from '../../hooks/useDashboardStore'
+import PressureActiveIcon from '../svg-icons/PressureActiveIcon'
+import PressureInActiveIcon from '../svg-icons/PressureInActiveIcon'
 
 const ToolPanel = () => {
     const [color, setColor] = useColor('#000000')
@@ -64,7 +66,7 @@ const ToolPanel = () => {
         axisMode,
         penActive,
         drawGuide,
-        drawShape,
+        drawShapeType,
         strokeType,
         strokeWidth,
         setAxisMode,
@@ -102,11 +104,6 @@ const ToolPanel = () => {
         dynamicDrawingPlaneMesh,
         setDynamicDrawingPlaneMesh,
         setWidthBackground,
-        setStrokeStablePercentage,
-        setStableBackground,
-        selectedGroups,
-        addToSelectedGroup,
-        removeFromSelectedGroup,
         mergeGeometries,
         setMergeGeometries,
         setLineColor,
@@ -118,6 +115,14 @@ const ToolPanel = () => {
         bendPlaneGuide,
         setBendPlaneGuide,
         setEraseGuide,
+        openStrokeStabler,
+        setOpenStrokeStabler,
+        stableBackground,
+        setStableBackground,
+        strokeStablePercentage,
+        setStrokeStablePercentage,
+        selectGuide,
+        setSelectGuide,
     } = canvasDrawStore((state) => state)
 
     const { orbitalLock, setOrbitalLock } = canvasViewStore((state) => state)
@@ -139,6 +144,9 @@ const ToolPanel = () => {
         groupOptions,
         setGroupOptions,
         groupData,
+        selectedGroups,
+        addToSelectedGroup,
+        removeFromSelectedGroup,
         renderOptions,
         setRenderOptions,
         postProcess,
@@ -161,6 +169,7 @@ const ToolPanel = () => {
                 setOpenDrawShapeOptions(false)
                 setEraserActive(false)
                 setSelectLines(false)
+                setSelectGuide(false)
                 setDrawGuide(false)
                 setBendPlaneGuide(false)
                 setOpenColorOptions(false)
@@ -176,6 +185,7 @@ const ToolPanel = () => {
                 setEraserActive(!eraserActive)
                 setPenActive(false)
                 setSelectLines(false)
+                setSelectGuide(false)
                 setDrawGuide(false)
                 setBendPlaneGuide(false)
                 setOpenColorOptions(false)
@@ -190,6 +200,7 @@ const ToolPanel = () => {
             case 'selectLines':
                 setSelectLines(!selectLines)
                 setEraserActive(false)
+                setSelectGuide(false)
                 setPenActive(false)
                 setDrawGuide(false)
                 setBendPlaneGuide(false)
@@ -202,12 +213,29 @@ const ToolPanel = () => {
                 }
                 break
 
+            case 'selectGuide':
+                setSelectGuide(!selectGuide)
+                setSelectLines(false)
+                setEraserActive(false)
+                setPenActive(false)
+                setDrawGuide(false)
+                setBendPlaneGuide(false)
+                setOpenColorOptions(false)
+                setOpenStrokeOptions(false)
+                if (canvasDrawStore.getState().selectGuide) {
+                    setOrbitalLock(true)
+                } else {
+                    setOrbitalLock(false)
+                }
+                break
+
             case 'draw_guide':
                 setDrawGuide(!drawGuide)
                 setOpenDrawShapeOptions(false)
                 setPenActive(false)
                 setEraserActive(false)
                 setSelectLines(false)
+                setSelectGuide(false)
                 setOpenColorOptions(false)
                 setOpenStrokeOptions(false)
                 setOrbitalLock(false)
@@ -226,6 +254,7 @@ const ToolPanel = () => {
                 setPenActive(false)
                 setEraserActive(false)
                 setSelectLines(false)
+                setSelectGuide(false)
                 setOpenColorOptions(false)
                 setOpenStrokeOptions(false)
                 setOrbitalLock(false)
@@ -238,6 +267,7 @@ const ToolPanel = () => {
                 setPenActive(false)
                 setEraserActive(false)
                 setSelectLines(false)
+                setSelectGuide(false)
                 setOpenColorOptions(false)
                 setOpenStrokeOptions(false)
                 setOrbitalLock(false)
@@ -256,6 +286,7 @@ const ToolPanel = () => {
     function handleSceneOptions() {
         setSceneOptions(!sceneOptions)
         setGroupOptions(true)
+        setRenderOptions(false)
     }
 
     // --- Handling Stroke ---
@@ -329,7 +360,7 @@ const ToolPanel = () => {
         setOpenOpacitySlider(false)
         setOpenWidthSlider(false)
         setMirrorOptions(false)
-        // setOpenStrokStabler(false)
+        setOpenStrokeStabler(false)
         setOpenStrokeOptions(!openStrokeOptions)
         setOpenDrawShapeOptions(false)
     }
@@ -340,7 +371,7 @@ const ToolPanel = () => {
         setOpenOpacitySlider(false)
         setOpenWidthSlider(false)
         setMirrorOptions(false)
-        // setOpenStrokStabler(false)
+        setOpenStrokeStabler(false)
         setOpenStrokeOptions(false)
         setOpenDrawShapeOptions(!openDrawShapeOptions)
     }
@@ -353,7 +384,7 @@ const ToolPanel = () => {
         setOpenWidthSlider(false)
         setMirrorOptions(false)
         setOpenDrawShapeOptions(false)
-        // setOpenStrokStabler(false)
+        setOpenStrokeStabler(false)
         setOpenColorOptions(!openColorOptions)
     }
 
@@ -364,7 +395,7 @@ const ToolPanel = () => {
         setOpenWidthSlider(false)
         setMirrorOptions(false)
         setOpenDrawShapeOptions(false)
-        // setOpenStrokStabler(false)
+        setOpenStrokeStabler(false)
         setOpenColorOptions(!openColorOptions)
     }
 
@@ -375,7 +406,7 @@ const ToolPanel = () => {
         setOpenWidthSlider(false)
         setMirrorOptions(false)
         setOpenDrawShapeOptions(false)
-        // setOpenStrokStabler(false)l
+        setOpenStrokeStabler(false)
         setFreeHandStroke(!straightHandStroke)
     }
 
@@ -386,7 +417,7 @@ const ToolPanel = () => {
         setOpenWidthSlider(false)
         setMirrorOptions(false)
         setOpenDrawShapeOptions(false)
-        // setOpenStrokStabler(false)
+        setOpenStrokeStabler(false)
         setOpenOpacitySlider(!openOpacitySlider)
     }
 
@@ -397,7 +428,7 @@ const ToolPanel = () => {
         setOpenOpacitySlider(false)
         setMirrorOptions(false)
         setOpenDrawShapeOptions(false)
-        // setOpenStrokStabler(false)
+        setOpenStrokeStabler(false)
         setOpenWidthSlider(!openWidthSlider)
     }
 
@@ -408,8 +439,8 @@ const ToolPanel = () => {
         setOpenOpacitySlider(false)
         setOpenWidthSlider(false)
         setOpenDrawShapeOptions(false)
+        setOpenStrokeStabler(false)
         setMirrorOptions(!mirrorOptions)
-        // setOpenStrokStabler(!openStrokStabler)
     }
 
     function handleStableStrokeOptions(e) {
@@ -420,7 +451,7 @@ const ToolPanel = () => {
         setOpenWidthSlider(false)
         setMirrorOptions(false)
         setOpenDrawShapeOptions(false)
-        // setOpenStrokStabler(!openStrokStabler)
+        setOpenStrokeStabler(!openStrokeStabler)
     }
 
     function handleWidthSliderValue(e) {
@@ -456,7 +487,8 @@ const ToolPanel = () => {
         const max = e.target.max
         const currentVal = e.target.value
         // e.target.style.backgroundSize =
-        // let x = ((currentVal - min) / (max - min)) * 100 + '% 100%'
+        let x = ((currentVal - min) / (max - min)) * 100 + '% 100%'
+        console.log({ x })
         setStableBackground(((currentVal - min) / (max - min)) * 100 + '% 100%')
     }
 
@@ -486,22 +518,16 @@ const ToolPanel = () => {
         )
     }
 
-    // Render
+    // Render options
     function handleSceneActiveOptions(option) {
         switch (option) {
             case 'groups':
-                // setGuideOptions(false)
                 setRenderOptions(false)
+                setGroupOptions(true)
                 break
-            // case 'guides':
-            //     setGuideOptions(true)
-            //     setGroupOptions(false)
-            //     setRenderOptions(false)
-            //     break
             case 'render':
-                setRenderOptions(true)
                 setGroupOptions(false)
-                // setGuideOptions(false)
+                setRenderOptions(true)
                 break
 
             default:
@@ -537,27 +563,27 @@ const ToolPanel = () => {
     }
 
     async function handleGroupVisibility(data) {
-        canvasDrawStore
+        canvasRenderStore
             .getState()
             .updateVisibleGroupProduct(data.uuid, !data.visible)
-        const updatedGroupData = canvasDrawStore.getState().groupData
+        const updatedGroupData = canvasRenderStore.getState().groupData
         let response = await saveGroupToIndexDB(updatedGroupData, data.note_id)
     }
 
     async function handleActiveGroup(data) {
-        canvasDrawStore.getState().setActiveGroup(data.uuid)
-        canvasDrawStore.getState().updateActiveGroupProduct(data.uuid)
-        const updatedGroupData = canvasDrawStore.getState().groupData
+        canvasRenderStore.getState().setActiveGroup(data.uuid)
+        canvasRenderStore.getState().updateActiveGroupProduct(data.uuid)
+        const updatedGroupData = canvasRenderStore.getState().groupData
         let response = await saveGroupToIndexDB(updatedGroupData, data.note_id)
     }
 
     return (
         <>
-            <div className="absolute top-4 right-[16px] z-5 flex items-center gap-[4px] p-[4px] rounded-[12px] bg-[#000000]">
+            <div className="absolute top-4 right-[16px] z-5 flex items-center gap-[4px] p-[4px] rounded-[8px] bg-[#000000] backdrop-blur-2xl">
                 {!dynamicDrawingPlaneMesh && (
                     <button
                         onClick={(e) => handleDraw('draw_guide')}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             drawGuide ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
                         }`}
                     >
@@ -568,11 +594,7 @@ const ToolPanel = () => {
                 {dynamicDrawingPlaneMesh && (
                     <button
                         onClick={(e) => handleDraw('erase_guide')}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
-                            openDrawShapeOptions
-                                ? 'bg-[#D3D3D3]/25'
-                                : 'bg-[#000000]'
-                        }`}
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px]`}
                     >
                         <EraseGuideIcon color="#FFFFFF" size={20} />
                     </button>
@@ -580,9 +602,20 @@ const ToolPanel = () => {
 
                 {dynamicDrawingPlaneMesh && (
                     <button
+                        onClick={(e) => handleDraw('selectGuide')}
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                            selectGuide ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
+                        }`}
+                    >
+                        <SelectIcon color="#FFFFFF" size={20} />
+                    </button>
+                )}
+
+                {dynamicDrawingPlaneMesh && (
+                    <button
                         onClick={(e) => handleDraw('bend_guide')}
                         // setBendPlaneGuide(!bendPlaneGuide)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             bendPlaneGuide ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
                         }`}
                     >
@@ -592,7 +625,7 @@ const ToolPanel = () => {
 
                 <button
                     onClick={(e) => handleDraw('pen')}
-                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                         penActive ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
                     }`}
                 >
@@ -601,7 +634,7 @@ const ToolPanel = () => {
 
                 <button
                     onClick={(e) => handleDraw('eraser')}
-                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                         eraserActive ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
                     }`}
                 >
@@ -610,7 +643,7 @@ const ToolPanel = () => {
 
                 <button
                     onClick={(e) => handleDraw('selectLines')}
-                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                         selectLines ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
                     }`}
                 >
@@ -621,7 +654,7 @@ const ToolPanel = () => {
 
                 <button
                     onClick={(e) => handleSceneOptions()}
-                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                         sceneOptions ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
                     }`}
                 >
@@ -630,17 +663,16 @@ const ToolPanel = () => {
             </div>
 
             {penActive && (
-                <div className="absolute top-[72px] left-[16px] z-5 gap-[4px] p-[4px] flex flex-col justify-center rounded-[12px] bg-[#000000]">
+                <div className="absolute top-[72px] left-[16px] z-5 gap-[4px] p-[4px] flex flex-col justify-center rounded-[8px] bg-[#000000]">
                     <button
                         onClick={(e) => handleColorChange(e)}
-                        className="text-[#FFFFFF] font-bold flex justify-center items-center m-[8px] cursor-pointer rounded-[8px] border-[0px]"
+                        className="text-[#FFFFFF] font-bold flex justify-center items-center m-[8px] cursor-pointer rounded-[4px] border-[0px] "
                     >
                         <ColorSelectIcon color={color.hex} size={20} />
                     </button>
-
                     <button
                         onClick={(e) => handleStrokeOptions(e)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px]`}
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px]`}
                     >
                         {strokeType === 'taper' && (
                             <TaperStrokeIcon color={color.hex} size={20} />
@@ -655,35 +687,33 @@ const ToolPanel = () => {
                             <BeltStrokeIcon color={color.hex} size={20} />
                         )}
                     </button>
-
                     <button
                         onClick={(e) => handleShapeOptions(e)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             openDrawShapeOptions
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
                         }`}
                     >
-                        {drawShape === 'free_hand' && (
+                        {drawShapeType === 'free_hand' && (
                             <FreeHandIcon color="#FFFFFF" size={20} />
                         )}
-                        {drawShape === 'straight' && (
+                        {drawShapeType === 'straight' && (
                             <StraightLineIcon color="#FFFFFF" size={20} />
                         )}
-                        {drawShape === 'circle' && (
+                        {drawShapeType === 'circle' && (
                             <CircleIcon color="#FFFFFF" size={20} />
                         )}
-                        {drawShape === 'square' && (
+                        {drawShapeType === 'square' && (
                             <SquareIcon color="#FFFFFF" size={20} />
                         )}
-                        {drawShape === 'arc' && (
+                        {drawShapeType === 'arc' && (
                             <ArcIcon color="#FFFFFF" size={20} />
                         )}
                     </button>
-
                     <button
                         onClick={(e) => handleOpacityOptions(e)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             openOpacitySlider
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
@@ -695,28 +725,44 @@ const ToolPanel = () => {
                             opacity={strokeOpacity}
                         />
                     </button>
-
                     <button
                         onClick={(e) => handleWidthOptions(e)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             openWidthSlider ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
                         }`}
                     >
                         <WidthIcon color="#FFFFFF" size={20} />
                     </button>
-
                     <button
-                        onClick={(e) => setPressureMode(!pressureMode)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
-                            pressureMode ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
+                        onClick={(e) => handleStableStrokeOptions(e)}
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                            openStrokeStabler
+                                ? 'bg-[#D3D3D3]/25'
+                                : 'bg-[#000000]'
                         }`}
                     >
                         <StableStrokIcon color="#FFFFFF" size={20} />
                     </button>
+                    {pressureMode && (
+                        <button
+                            onClick={(e) => setPressureMode(false)}
+                            className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] `}
+                        >
+                            <PressureActiveIcon color="#FFFFFF" size={20} />
+                        </button>
+                    )}
 
+                    {!pressureMode && (
+                        <button
+                            onClick={(e) => setPressureMode(true)}
+                            className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] `}
+                        >
+                            <PressureInActiveIcon color="#FFFFFF" size={20} />
+                        </button>
+                    )}
                     <button
                         onClick={(e) => handleMirrorOptions(e)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             mirrorOptions ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
                         }`}
                     >
@@ -728,7 +774,7 @@ const ToolPanel = () => {
             {penActive && openColorOptions && (
                 <div
                     onPointerUp={(e) => setStrokeColor(color.hex)}
-                    className="absolute top-[72px] left-[72px] z-5 p-[0px] rounded-[12px] bg-[#000000] border-[0px]"
+                    className="absolute top-[72px] left-[72px] z-5 p-[0px] rounded-[8px] bg-[#000000] border-[0px]"
                 >
                     <ColorPicker
                         color={color}
@@ -785,13 +831,13 @@ const ToolPanel = () => {
             )}
 
             {penActive && openStrokeOptions && (
-                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[12px]  bg-[#000000]">
+                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[8px]  bg-[#000000]">
                     {/* <p className="text-left text-[12px] block funnel-sans-regular text-[#ffffff] mb-[8px]">
                         Stroke
                     </p> */}
                     <button
                         onClick={(e) => handleStroke('taper')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             strokeType === 'taper'
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
@@ -801,7 +847,7 @@ const ToolPanel = () => {
                     </button>
                     <button
                         onClick={(e) => handleStroke('cube')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             strokeType === 'cube'
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
@@ -811,7 +857,7 @@ const ToolPanel = () => {
                     </button>
                     <button
                         onClick={(e) => handleStroke('paint')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             strokeType === 'paint'
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
@@ -821,7 +867,7 @@ const ToolPanel = () => {
                     </button>
                     <button
                         onClick={(e) => handleStroke('belt')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             strokeType === 'belt'
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
@@ -833,11 +879,11 @@ const ToolPanel = () => {
             )}
 
             {penActive && openDrawShapeOptions && (
-                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[12px]  bg-[#000000]">
+                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[8px]  bg-[#000000]">
                     <button
                         onClick={(e) => handleShape('free_hand')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
-                            drawShape === 'free_hand'
+                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                            drawShapeType === 'free_hand'
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
                         }`}
@@ -846,8 +892,8 @@ const ToolPanel = () => {
                     </button>
                     <button
                         onClick={(e) => handleShape('straight')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
-                            drawShape === 'straight'
+                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                            drawShapeType === 'straight'
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
                         }`}
@@ -856,8 +902,8 @@ const ToolPanel = () => {
                     </button>
                     <button
                         onClick={(e) => handleShape('circle')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
-                            drawShape === 'circle'
+                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                            drawShapeType === 'circle'
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
                         }`}
@@ -866,8 +912,8 @@ const ToolPanel = () => {
                     </button>
                     <button
                         onClick={(e) => handleShape('square')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
-                            drawShape === 'square'
+                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                            drawShapeType === 'square'
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
                         }`}
@@ -876,8 +922,8 @@ const ToolPanel = () => {
                     </button>
                     <button
                         onClick={(e) => handleShape('arc')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
-                            drawShape === 'arc'
+                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                            drawShapeType === 'arc'
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
                         }`}
@@ -888,10 +934,7 @@ const ToolPanel = () => {
             )}
 
             {penActive && openOpacitySlider && (
-                <div className="absolute w-[198px] top-[72px] left-[72px] z-5 p-[4px] justify-center rounded-[12px] bg-[#000000]">
-                    {/* <p className="text-left text-[12px] block funnel-sans-regular text-[#ffffff] mb-[8px]">
-                        OpacityIcon
-                    </p> */}
+                <div className="absolute w-[198px] top-[72px] left-[72px] z-5 p-[4px] justify-center rounded-[8px] bg-[#000000]">
                     <div className="bg-[#000000] flex flex-col m-[4px]">
                         <div className="range-container">
                             <div className="range-wrapper">
@@ -919,7 +962,7 @@ const ToolPanel = () => {
                             <input
                                 // onChange={(e) => handleOpacitySliderValue(e)}
                                 type="number"
-                                className="text-[#FFFFFF] rounded-[8px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                className="text-[#FFFFFF] rounded-[4px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
                                 value={strokeOpacity}
                                 disabled={true}
                             />
@@ -929,10 +972,7 @@ const ToolPanel = () => {
             )}
 
             {penActive && openWidthSlider && (
-                <div className="absolute w-[198px] top-[72px] left-[72px] gap-[4px] z-5 p-[4px] justify-center rounded-[12px] bg-[#000000]  ">
-                    {/* <p className="text-left text-[12px] block funnel-sans-regular text-[#ffffff] mb-[8px]">
-                        Width
-                    </p> */}
+                <div className="absolute w-[198px] top-[72px] left-[72px] z-5 p-[4px] justify-center rounded-[8px] bg-[#000000]">
                     <div className="bg-[#000000] flex flex-col m-[4px]">
                         <div className="range-container">
                             <div className="range-wrapper">
@@ -941,7 +981,7 @@ const ToolPanel = () => {
                                     type="range"
                                     name="range"
                                     id="range-slider"
-                                    step={0.05}
+                                    step={0.01}
                                     value={strokeWidth}
                                     min={0.01}
                                     max={5}
@@ -958,7 +998,7 @@ const ToolPanel = () => {
                             <input
                                 // onChange={(e) => handleWidthSliderValue(e)}
                                 type="number"
-                                className="  text-[#FFFFFF] rounded-[8px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                className="  text-[#FFFFFF] rounded-[4px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
                                 value={strokeWidth}
                                 disabled={true}
                             />
@@ -967,9 +1007,8 @@ const ToolPanel = () => {
                 </div>
             )}
 
-            {/* {penActive && openStrokStabler && (
-                <div className="absolute w-[198px] top-[72px] left-[72px] z-5 p-[4px] justify-center rounded-[8px]    ">
-
+            {penActive && openStrokeStabler && (
+                <div className="absolute w-[198px] top-[72px] left-[72px] z-5 p-[4px] justify-center rounded-[8px] bg-[#000000]">
                     <div className="bg-[#000000] flex flex-col m-[4px]">
                         <div className="range-container">
                             <div className="range-wrapper">
@@ -980,10 +1019,10 @@ const ToolPanel = () => {
                                     type="range"
                                     name="range"
                                     id="range-slider"
-                                    step={0.01}
+                                    step={1}
                                     value={strokeStablePercentage}
                                     min={0}
-                                    max={1}
+                                    max={100}
                                     style={{
                                         backgroundSize: stableBackground,
                                     }}
@@ -996,22 +1035,22 @@ const ToolPanel = () => {
                         <div className="mt-[16px]">
                             <input
                                 type="number"
-                                className="  text-[#FFFFFF] rounded-[8px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                className="  text-[#FFFFFF] rounded-[4px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
                                 value={strokeStablePercentage}
                                 disabled={true}
                             />
                         </div>
                     </div>
                 </div>
-            )} */}
+            )}
 
             {penActive && mirrorOptions && (
-                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[12px] bg-[#000000]">
+                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[8px] bg-[#000000]">
                     <button
                         onClick={(e) => handleMirroring('X')}
                         className={`${
                             mirror.x ? 'bg-[#DE3163]/50' : 'bg-[#000000]'
-                        }  text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px]`}
+                        }  text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px]`}
                     >
                         <MirrorIcon color="#DE3163" size={20} />
                     </button>
@@ -1019,7 +1058,7 @@ const ToolPanel = () => {
                         onClick={(e) => handleMirroring('Y')}
                         className={`${
                             mirror.y ? 'bg-[#50C878]/50' : 'bg-[#000000]'
-                        }  text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px]`}
+                        }  text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px]`}
                     >
                         <MirrorIcon color="#50C878" size={20} />
                     </button>
@@ -1027,7 +1066,7 @@ const ToolPanel = () => {
                         onClick={(e) => handleMirroring('Z')}
                         className={`${
                             mirror.z ? 'bg-[#0096FF]/50' : 'bg-[#000000]'
-                        }  text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px]`}
+                        }  text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px]`}
                     >
                         <MirrorIcon color="#0096FF" size={20} />
                     </button>
@@ -1035,24 +1074,24 @@ const ToolPanel = () => {
             )}
 
             {(drawGuide || bendPlaneGuide) && (
-                <div className="absolute top-[72px] left-[16px] z-5 p-[4px] flex flex-col justify-center rounded-[12px] bg-[#000000]">
+                <div className="absolute top-[72px] left-[16px] z-5 p-[4px] flex flex-col justify-center rounded-[8px] bg-[#000000]">
                     <button
                         onClick={(e) => handleShapeOptions(e)}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px]"
+                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
                     >
-                        {drawShape === 'free_hand' && (
+                        {drawShapeType === 'free_hand' && (
                             <FreeHandIcon color="#FFFFFF" size={20} />
                         )}
-                        {drawShape === 'straight' && (
+                        {drawShapeType === 'straight' && (
                             <StraightLineIcon color="#FFFFFF" size={20} />
                         )}
-                        {drawShape === 'circle' && (
+                        {drawShapeType === 'circle' && (
                             <CircleIcon color="#FFFFFF" size={20} />
                         )}
-                        {drawShape === 'square' && (
+                        {drawShapeType === 'square' && (
                             <SquareIcon color="#FFFFFF" size={20} />
                         )}
-                        {drawShape === 'arc' && (
+                        {drawShapeType === 'arc' && (
                             <ArcIcon color="#FFFFFF" size={20} />
                         )}
                     </button>
@@ -1060,55 +1099,57 @@ const ToolPanel = () => {
             )}
 
             {(drawGuide || bendPlaneGuide) && openDrawShapeOptions && (
-                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[12px]  bg-[#000000]">
+                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[8px]  bg-[#000000]">
                     <button
                         onClick={(e) => handleShape('free_hand')}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px]"
+                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
                     >
                         <FreeHandIcon color="#FFFFFF" size={20} />
                     </button>
                     <button
                         onClick={(e) => handleShape('straight')}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px]"
+                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
                     >
                         <StraightLineIcon color="#FFFFFF" size={20} />
                     </button>
                     <button
                         onClick={(e) => handleShape('circle')}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px]"
+                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
                     >
                         <CircleIcon color="#FFFFFF" size={20} />
                     </button>
                     <button
                         onClick={(e) => handleShape('square')}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px]"
+                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
                     >
                         <SquareIcon color="#FFFFFF" size={20} />
                     </button>
                     <button
                         onClick={(e) => handleShape('arc')}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px]"
+                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
                     >
                         <ArcIcon color="#FFFFFF" size={20} />
                     </button>
                 </div>
             )}
 
-            {selectLines && (
-                <div className="absolute top-[72px] left-[16px] z-5 p-[4px] flex flex-col justify-center rounded-[12px] bg-[#000000]">
-                    <button
-                        onClick={(e) => handleSelectedColorChange(e)}
-                        className="text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px]"
-                    >
-                        <ColorSelectIcon
-                            color={selectedLinesColor.hex}
-                            size={20}
-                        />
-                    </button>
+            {(selectLines || selectGuide) && (
+                <div className="absolute top-[72px] left-[16px] z-5 p-[4px] flex flex-col justify-center rounded-[8px] bg-[#000000]">
+                    {selectLines && (
+                        <button
+                            onClick={(e) => handleSelectedColorChange(e)}
+                            className="text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                        >
+                            <ColorSelectIcon
+                                color={selectedLinesColor.hex}
+                                size={20}
+                            />
+                        </button>
+                    )}
 
                     <button
                         onClick={(e) => setTransformMode('translate')}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             transformMode === 'translate'
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
@@ -1119,7 +1160,7 @@ const ToolPanel = () => {
 
                     <button
                         onClick={(e) => setTransformMode('rotate')}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             transformMode === 'rotate'
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
@@ -1130,7 +1171,7 @@ const ToolPanel = () => {
 
                     <button
                         onClick={(e) => setTransformMode('scale')}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
                             transformMode === 'scale'
                                 ? 'bg-[#D3D3D3]/25'
                                 : 'bg-[#000000]'
@@ -1142,7 +1183,7 @@ const ToolPanel = () => {
                     {axisMode === 'world' && (
                         <button
                             onClick={(e) => setAxisMode('local')}
-                            className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px]"
+                            className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
                         >
                             <GlobalModeIcon color="#FFFFFF" size={20} />
                         </button>
@@ -1151,27 +1192,33 @@ const ToolPanel = () => {
                     {axisMode === 'local' && (
                         <button
                             onClick={(e) => setAxisMode('world')}
-                            className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px]"
+                            className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
                         >
                             <LocalModeIcon color="#FFFFFF" />
                         </button>
                     )}
 
-                    <button
-                        disabled={copy}
-                        onClick={(e) => setCopy(!copy)}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px]"
-                    >
-                        <CopyIcon color="#FFFFFF" size={20} />
-                    </button>
+                    {selectLines && (
+                        <button
+                            disabled={copy}
+                            onClick={(e) => setCopy(!copy)}
+                            className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                        >
+                            <CopyIcon color="#FFFFFF" size={20} />
+                        </button>
+                    )}
 
-                    <button
-                        disabled={mergeGeometries}
-                        onClick={(e) => setMergeGeometries(!mergeGeometries)}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px]"
-                    >
-                        <LinkIcon color="#FFFFFF" size={20} />
-                    </button>
+                    {selectLines && (
+                        <button
+                            disabled={mergeGeometries}
+                            onClick={(e) =>
+                                setMergeGeometries(!mergeGeometries)
+                            }
+                            className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                        >
+                            <LinkIcon color="#FFFFFF" size={20} />
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -1179,7 +1226,7 @@ const ToolPanel = () => {
                 <div
                     onChange={(e) => setLineColor(selectedLinesColor.hex)}
                     onPointerUp={(e) => setLineColor(selectedLinesColor.hex)}
-                    className="funnel-sans-regular absolute top-[72px] left-[72px] z-5 p-[0px] rounded-[12px]"
+                    className="funnel-sans-regular absolute top-[72px] left-[72px] z-5 p-[0px] rounded-[8px]"
                 >
                     <ColorPicker
                         color={selectedLinesColor}
@@ -1195,7 +1242,7 @@ const ToolPanel = () => {
             )}
 
             {sceneOptions && (
-                <div className="absolute w-[240px] top-[72px] right-[16px] text-[#FFFFFF] z-5 p-[4px] rounded-[12px] bg-[#000000]">
+                <div className="absolute w-[240px] top-[72px] right-[16px] text-[#FFFFFF] z-5 p-[4px] rounded-[8px] bg-[#000000]">
                     <div className="flex justify-around mb-[8px]">
                         <div
                             onClick={(e) => handleSceneActiveOptions('groups')}
@@ -1224,25 +1271,25 @@ const ToolPanel = () => {
                         <div className="flex justify-center mb-[8px]">
                             <div
                                 onClick={(e) => handleGroupOperation('add')}
-                                className="   font-bold p-[8px] cursor-pointer rounded-[8px]"
+                                className="   font-bold p-[8px] cursor-pointer rounded-[4px]"
                             >
                                 <AddIcon color="#FFFFFF" size={20} />
                             </div>
                             <div
                                 onClick={(e) => handleGroupOperation('rename')}
-                                className="   font-bold p-[8px] cursor-pointer rounded-[8px]"
+                                className="   font-bold p-[8px] cursor-pointer rounded-[4px]"
                             >
                                 <RenameIcon color="#FFFFFF" size={20} />
                             </div>
                             <div
                                 onClick={(e) => handleGroupOperation('copy')}
-                                className="   font-bold p-[8px] cursor-pointer rounded-[8px]"
+                                className="   font-bold p-[8px] cursor-pointer rounded-[4px]"
                             >
                                 <CopyIcon color="#FFFFFF" size={20} />
                             </div>
                             <div
                                 onClick={(e) => handleGroupOperation('delete')}
-                                className="   font-bold p-[8px] cursor-pointer rounded-[8px]"
+                                className="   font-bold p-[8px] cursor-pointer rounded-[4px]"
                             >
                                 <DeleteIcon color="#FF3131" size={20} />
                             </div>
@@ -1254,33 +1301,26 @@ const ToolPanel = () => {
                     {sceneOptions && copyGroupModal && <CopyGroups />}
                     {sceneOptions && deleteGroupModal && <DeleteGroups />}
 
-                    <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
+                    <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
                         {sceneOptions &&
                             groupOptions &&
                             groupData.map((data, key) => {
                                 return (
                                     <div
                                         key={key}
-                                        className="text-[16px] z-5 m-[4px] flex flex-col rounded-[8px] text-[#000000] funnel-sans-regular "
+                                        className="text-[16px] z-5 m-[4px] flex flex-col rounded-[4px] text-[#000000] funnel-sans-regular "
                                     >
                                         <div
                                             className={`${
                                                 data.active
                                                     ? 'bg-[#00A36C]'
                                                     : 'bg-[#FFFFFF]'
-                                            } flex cursor-pointer justify-between items-center rounded-[8px] px-[8px]`}
+                                            } flex cursor-pointer justify-between items-center rounded-[4px] px-[8px]`}
                                         >
-                                            {/* <input
-                                                type="checkbox"
-                                                className="cursor-pointer"
-                                                onClick={(e) =>
-                                                    handleSelectGroup(e, data)
-                                                }
-                                            /> */}
                                             <label className="cursor-pointer">
                                                 <input
                                                     type="checkbox"
-                                                    className="peer sr-only"
+                                                    className="peer sr-only border-1"
                                                     checked={selectedGroups.some(
                                                         (group) =>
                                                             group.uuid ===
@@ -1292,9 +1332,12 @@ const ToolPanel = () => {
                                                             data
                                                         )
                                                     }
+                                                    onFocus={(e) =>
+                                                        e.preventDefault()
+                                                    }
                                                 />
                                                 <div
-                                                    className={`w-[16px] h-[16px] rounded-[20px] bg-[#ffffff] border-[0px] border-blue-600 peer-checked:bg-blue-600 flex items-center justify-center`}
+                                                    className={`w-[16px] h-[16px]  rounded-[20px] bg-[#ffffff] border-[1px] border-[#888888] peer-checked:bg-[#005eff] flex items-center justify-center`}
                                                 >
                                                     <CorrectIcon
                                                         size={10}
@@ -1308,48 +1351,20 @@ const ToolPanel = () => {
                                                 }
                                                 className="p-[4px] w-full mx-[8px]"
                                             >
-                                                {data.name}
+                                                {/* {data.name} */}
+                                                {data.name.length > 13
+                                                    ? `${data.name.slice(
+                                                          0,
+                                                          13
+                                                      )}...`
+                                                    : data.name}
                                             </div>
-
-                                            {/* <div>
-                                                <label
-                                                    htmlFor="toggle"
-                                                    className="flex items-center cursor-pointer"
-                                                >
-                                                    <div className="relative">
-                                                        <input
-                                                            type="checkbox"
-                                                            id="toggle"
-                                                            className="sr-only" // Visually hide the default checkbox
-                                                            // checked={true}
-                                                            // onChange
-                                                        />
-                                                        <div
-                                                            className={`block w-14 h-8 rounded-full transition-colors duration-300 ${
-                                                                true
-                                                                    ? 'bg-blue-600'
-                                                                    : 'bg-gray-300'
-                                                            }`}
-                                                        ></div>
-                                                        <div
-                                                            className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform duration-300 ${
-                                                                true
-                                                                    ? 'translate-x-full'
-                                                                    : ''
-                                                            }`}
-                                                        ></div>
-                                                    </div>
-                                                    <span className="ml-3 text-gray-700">
-                                                        {true ? 'On' : 'Off'}
-                                                    </span>
-                                                </label>
-                                            </div> */}
 
                                             <div
                                                 onClick={(e) =>
                                                     handleGroupVisibility(data)
                                                 }
-                                                className="flex justify-between gap-[8px] items-center p-[4px] rounded-[8px]"
+                                                className="flex justify-between gap-[8px] items-center p-[4px] rounded-[4px]"
                                             >
                                                 {data.visible && (
                                                     <EyeOpenIcon
@@ -1370,8 +1385,92 @@ const ToolPanel = () => {
                             })}
                     </div>
 
+                    {/* <div className="max-h-[500px] min-h-[500px] overflow-y-auto custom-scrollbar">
+                        {sceneOptions &&
+                            groupOptions &&
+                            groupData.map((data, key) => {
+                                return (
+                                    <div
+                                        key={key}
+                                        className="text-[16px] z-5 m-[4px] flex flex-col rounded-[4px] text-[#000000] funnel-sans-regular"
+                                    >
+                                        <div
+                                            className={`${
+                                                data.active
+                                                    ? 'bg-[#00A36C]'
+                                                    : 'bg-[#FFFFFF]'
+                                            } flex cursor-pointer justify-between items-center rounded-[4px] px-[8px]`}
+                                        >
+                                            <label
+                                                className="cursor-pointer"
+                                                onClick={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                }}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="peer sr-only"
+                                                    checked={selectedGroups.some(
+                                                        (group) =>
+                                                            group.uuid ===
+                                                            data.uuid
+                                                    )}
+                                                    onChange={(e) =>
+                                                        handleSelectGroup(
+                                                            e,
+                                                            data
+                                                        )
+                                                    }
+                                                    onFocus={(e) =>
+                                                        e.preventDefault()
+                                                    }
+                                                />
+                                                <div
+                                                    className={`w-[16px] h-[16px] rounded-[20px] bg-[#ffffff] border-[0px] border-blue-600 peer-checked:bg-blue-600 flex items-center justify-center flex-shrink-0`}
+                                                >
+                                                    <CorrectIcon
+                                                        size={10}
+                                                        color="#FFFFFF"
+                                                    />
+                                                </div>
+                                            </label>
+                                            <div
+                                                onClick={(e) =>
+                                                    handleActiveGroup(data)
+                                                }
+                                                className="p-[4px] w-full mx-[8px]"
+                                            >
+                                                {data.name}
+                                            </div>
+
+                                            <div
+                                                onClick={(e) =>
+                                                    handleGroupVisibility(data)
+                                                }
+                                                className="flex justify-between gap-[8px] items-center p-[4px] rounded-[4px] flex-shrink-0"
+                                            >
+                                                {data.visible && (
+                                                    <EyeOpenIcon
+                                                        color="#000000"
+                                                        size={20}
+                                                    />
+                                                )}
+                                                {!data.visible && (
+                                                    <EyeCloseIcon
+                                                        color="#000000"
+                                                        size={20}
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                    </div> */}
+
                     {sceneOptions && renderOptions && (
-                        <div className="funnel-sans-regular text-[#FFFFFF] z-5 items-center rounded-[8px] w-full bg-[#000000]">
+                        <div className="funnel-sans-regular text-[#FFFFFF] z-5 items-center rounded-[4px] w-full bg-[#000000]">
                             <div className="flex justify-between items-center px-[12px]">
                                 <div className="flex justify-between items-center">
                                     <div className="font-bold p-[8px] cursor-pointer flex gap-[12px]">
@@ -1435,7 +1534,7 @@ const ToolPanel = () => {
                                         onClick={(e) =>
                                             setPostProcess(!postProcess)
                                         }
-                                        className="m-[12px] flex-col items-center bg-[#16b826] rounded-[12px]"
+                                        className="m-[12px] flex items-center bg-[#16b826] rounded-[12px]"
                                     >
                                         <div className="flex items-center bg-[#A9A9A9] rounded-[12px] transition-all duration-200 ease-out transform animate-fade-in">
                                             <OpacityIcon

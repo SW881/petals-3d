@@ -13,7 +13,7 @@ function customReplacer(key, value) {
 
 export const saveSceneLinesToIndexDB = async (lineData, id) => {
     try {
-        const sceneKey = `lines-draft-note-${id}`
+        const sceneKey = `lines-draft-note-1`
         // console.log({ lineData })
         let lineString = JSON.stringify(lineData, customReplacer, 0) // 2 for pretty printing
         let lineJson = JSON.parse(lineString)
@@ -22,32 +22,32 @@ export const saveSceneLinesToIndexDB = async (lineData, id) => {
         // console.log('✅ Saved line data from IndexedDB:', lineJson)
         return true
     } catch (err) {
-        // console.error('❌ Failed to save line data from IndexedDB', err)
+        console.error('❌ Failed to save line data from IndexedDB', err)
         return false
     }
 }
 
 export const saveGroupToIndexDB = async (groupData, id) => {
     try {
-        const sceneKey = `groups-draft-note-${id}`
+        const sceneKey = `groups-draft-note-1`
         await set(sceneKey, groupData, linesStore)
-        // console.log('Saved Group ...')
+        console.log('Saved Group ...')
         return true
     } catch (err) {
-        // console.log('Failed to save Group ...')
+        console.log('Failed to save Group ...')
         return false
     }
 }
 
 export const clearSceneFromIndexedDB = async (id) => {
     try {
-        const lineSceneKey = `lines-draft-note-${id}`
-        const groupSceneKey = `groups-draft-note-${id}`
+        const lineSceneKey = `lines-draft-note-1`
+        const groupSceneKey = `groups-draft-note-1`
 
         await del(lineSceneKey, linesStore)
         await del(groupSceneKey, linesStore)
 
-        // console.log('🧹 Scene cleared from IndexedDB')
+        console.log('🧹 Scene cleared from IndexedDB')
     } catch (err) {
         console.error('❌ Failed to clear scene from IndexedDB', err)
     }
@@ -55,16 +55,16 @@ export const clearSceneFromIndexedDB = async (id) => {
 
 export const loadSceneFromIndexedDB = async (id) => {
     try {
-        const lines = `lines-draft-note-${id}`
-        const groups = `groups-draft-note-${id}`
+        const lines = `lines-draft-note-1`
+        const groups = `groups-draft-note-1`
 
         const lineData = await get(lines, linesStore)
         const groupData = await get(groups, linesStore)
 
-        // console.log({ groupData })
+        console.log({ groupData })
         if (groupData || lineData) {
-            // console.log('✅ Loaded lines data from IndexedDB:', lineData)
-            // console.log('✅ Loaded groups data from IndexedDB:', groupData)
+            console.log('✅ Loaded lines data from IndexedDB:', lineData)
+            console.log('✅ Loaded groups data from IndexedDB:', groupData)
 
             return {
                 lineData,
@@ -73,11 +73,11 @@ export const loadSceneFromIndexedDB = async (id) => {
                 error: 'Loaded scene from IndexedDB',
             }
         } else {
-            // console.log('ℹ️ No saved scene found.')
+            console.log('ℹ️ No saved scene found.')
             return { success: false, error: 'No saved scene found' }
         }
     } catch (err) {
-        // console.error('❌ Failed to load from IndexedDB', err)
+        console.error('❌ Failed to load from IndexedDB', err)
         return { success: false, error: 'Failed to load from IndexedDB' }
     }
 }

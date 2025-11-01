@@ -32,7 +32,9 @@ const ViewsPanel = () => {
         setIsOrthographic,
     } = canvasViewStore((state) => state)
 
-    const { setAllowUndo, setAllowRedo } = drawStore((state) => state)
+    const { allowUndo, allowRedo, setAllowUndo, setAllowRedo } = drawStore(
+        (state) => state
+    )
 
     async function handleViewActions(action) {
         switch (action) {
@@ -62,11 +64,13 @@ const ViewsPanel = () => {
     async function handleFovSlider(e) {
         e.preventDefault()
         setCameraFov(parseInt(e.target.value))
+        // console.log({ cameraFov })
         // const min = e.target.min
         // const max = e.target.max
         // const currentVal = e.target.value
         // // e.target.style.backgroundSize =
         // let x = ((currentVal - min) / (max - min)) * 100 + '% 100%'
+        // console.log({ x })
         // setFovBackground(((currentVal - min) / (max - min)) * 100 + '% 100%')
 
         e.preventDefault()
@@ -77,12 +81,13 @@ const ViewsPanel = () => {
         const currentVal = e.target.value
         // e.target.style.backgroundSize =
         // let x = ((currentVal - min) / (max - min)) * 100 + '% 100%'
+        // console.log({ x })
         setFovBackground(((currentVal - min) / (max - min)) * 100 + '% 100%')
     }
 
     return (
         <>
-            <div className="flex flex-col gap-[4px] p-[4px] absolute bottom-[16px] left-[16px] rounded-[12px] bg-[#000000]">
+            <div className="flex flex-col gap-[4px] p-[4px] absolute bottom-[16px] left-[16px] rounded-[8px] bg-[#000000]">
                 <button
                     onClick={(e) => setIsOrthographic(!isOrthographic)}
                     className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
@@ -182,6 +187,7 @@ const ViewsPanel = () => {
                         className={`active:scale-85 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
                     >
                         <ShowGrid
+                            // color="#DE3163"
                             color={gridPlaneX ? '#DE3163' : '#00FF7F'}
                             size={20}
                         />
@@ -192,6 +198,7 @@ const ViewsPanel = () => {
                         className={`active:scale-85 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
                     >
                         <ShowGrid
+                            // color="#50C878"
                             color={gridPlaneY ? '#50C878' : '#00FF7F'}
                             size={20}
                         />
@@ -202,6 +209,7 @@ const ViewsPanel = () => {
                         className={`active:scale-85 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
                     >
                         <ShowGrid
+                            // color="#0096FF"
                             color={gridPlaneZ ? '#0096FF' : '#00FF7F'}
                             size={20}
                         />
