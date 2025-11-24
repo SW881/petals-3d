@@ -1,16 +1,13 @@
-import { ColorPicker, useColor } from 'react-color-palette'
-import 'react-color-palette/css'
-
 import SunIcon from '../svg-icons/SunIcon'
 import AddIcon from '../svg-icons/AddIcon'
 import ArcIcon from '../svg-icons/ArcIcon'
 import CopyIcon from '../svg-icons/CopyIcon'
 import LinkIcon from '../svg-icons/LinkIcon'
-import DrawIcon from '../svg-icons/DrawIcon'
+import PenIcon from '../svg-icons/PenIcon'
 import WidthIcon from '../svg-icons/WidthIcon'
 import ScaleIcon from '../svg-icons/ScaleIcon'
+import GuideIcon from '../svg-icons/GuideIcon'
 import SelectIcon from '../svg-icons/SelectIcon'
-import SquareIcon from '../svg-icons/SquareIcon'
 import EraserIcon from '../svg-icons/EraserIcon'
 import RotateIcon from '../svg-icons/RotateIcon'
 import DeleteIcon from '../svg-icons/DeleteIcon'
@@ -28,6 +25,7 @@ import LocalModeIcon from '../svg-icons/LocalModeIcon'
 import FlatShadeIcon from '../svg-icons/FlatShadeIcon'
 import GlowShadeIcon from '../svg-icons/GlowShadeIcon'
 import TranslateIcon from '../svg-icons/TranslateIcon'
+import LoftGuideIcon from '../svg-icons/LoftGuideIcon'
 import CubeStrokeIcon from '../svg-icons/CubeStrokeIcon'
 import GlobalModeIcon from '../svg-icons/GlobalModeIcon'
 import BeltStrokeIcon from '../svg-icons/BeltStrokeIcon'
@@ -37,10 +35,12 @@ import TaperStrokeIcon from '../svg-icons/TaperStrokeIcon'
 import ColorSelectIcon from '../svg-icons/ColorSelectIcon'
 import PaintStrokeIcon from '../svg-icons/PaintStrokeIcon'
 import StableStrokIcon from '../svg-icons/StableStrokIcon'
+import WrongButtonIcon from '../svg-icons/WrongButtonIcon'
 import RespondShadeIcon from '../svg-icons/RespondShadeIcon'
 import StraightLineIcon from '../svg-icons/StraightLineIcon'
-import DrawGuidePlaneIcon from '../svg-icons/DrawGuidePlaneIcon'
 import BendGuidePlaneIcon from '../svg-icons/BendGuidePlaneIcon'
+import PressureActiveIcon from '../svg-icons/PressureActiveIcon'
+import PressureInActiveIcon from '../svg-icons/PressureInActiveIcon'
 
 import AddNewGroups from './canvas/groups/AddNewGroups'
 import DeleteGroups from './canvas/groups/DeleteGroups'
@@ -52,14 +52,12 @@ import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
 import { canvasViewStore } from '../../hooks/useCanvasViewStore'
 import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
 import { dashboardStore } from '../../hooks/useDashboardStore'
-import PressureActiveIcon from '../svg-icons/PressureActiveIcon'
-import PressureInActiveIcon from '../svg-icons/PressureInActiveIcon'
+
+import TooltipAdvanced from '../info/TooltipAdvanced'
+import ColorHexPicker from './ColorHexPicker'
+import WrongIcon from '../svg-icons/WrongIcon'
 
 const ToolPanel = () => {
-    const [color, setColor] = useColor('#000000')
-    const [canvasColor, setCanvasColor] = useColor('#FFFFFF')
-    const [selectedLinesColor, setSelectedLinesColor] = useColor('#15cf6c')
-
     const {
         copy,
         setCopy,
@@ -81,6 +79,7 @@ const ToolPanel = () => {
         setSelectLines,
         setStrokeWidth,
         setStrokeColor,
+        strokeColor,
         setEraserActive,
         widthBackground,
         setPressureMode,
@@ -106,6 +105,7 @@ const ToolPanel = () => {
         setWidthBackground,
         mergeGeometries,
         setMergeGeometries,
+        lineColor,
         setLineColor,
         mirrorOptions,
         setMirrorOptions,
@@ -114,6 +114,8 @@ const ToolPanel = () => {
         setActiveMaterialType,
         bendPlaneGuide,
         setBendPlaneGuide,
+        loftGuidePlane,
+        setLoftGuidePlane,
         setEraseGuide,
         openStrokeStabler,
         setOpenStrokeStabler,
@@ -123,6 +125,26 @@ const ToolPanel = () => {
         setStrokeStablePercentage,
         selectGuide,
         setSelectGuide,
+        tensionBackground,
+        waistBackground,
+        radialBackground,
+        ployBackground,
+        setRadialBackground,
+        setWaistBackground,
+        setTensionBackground,
+        setPolyBackground,
+        tensionPercentage,
+        setTensionPercentage,
+        radialPercentage,
+        setRadialPercentage,
+        waistPercentage,
+        setWaistPercentage,
+        polyCountPercentage,
+        setPolyCountPercentage,
+        generateLoftSurface,
+        setGenerateLoftSurface,
+        highlighted,
+        setHighlighted,
     } = canvasDrawStore((state) => state)
 
     const { orbitalLock, setOrbitalLock } = canvasViewStore((state) => state)
@@ -153,13 +175,12 @@ const ToolPanel = () => {
         setPostProcess,
         sequentialLoading,
         setSequentialLoading,
+        canvasBackgroundColor,
         setCanvasBackgroundColor,
         intensityBackground,
         setIntensityBackground,
         lightIntensity,
         setLightIntensity,
-        renderMode,
-        setRenderMode,
     } = canvasRenderStore((state) => state)
 
     function handleDraw(button) {
@@ -174,6 +195,9 @@ const ToolPanel = () => {
                 setBendPlaneGuide(false)
                 setOpenColorOptions(false)
                 setOpenStrokeOptions(false)
+                setGenerateLoftSurface(false)
+                setLoftGuidePlane(false)
+
                 if (canvasDrawStore.getState().penActive) {
                     setOrbitalLock(true)
                 } else {
@@ -190,6 +214,9 @@ const ToolPanel = () => {
                 setBendPlaneGuide(false)
                 setOpenColorOptions(false)
                 setOpenStrokeOptions(false)
+                setGenerateLoftSurface(false)
+                setLoftGuidePlane(false)
+
                 if (canvasDrawStore.getState().eraserActive) {
                     setOrbitalLock(true)
                 } else {
@@ -206,6 +233,9 @@ const ToolPanel = () => {
                 setBendPlaneGuide(false)
                 setOpenColorOptions(false)
                 setOpenStrokeOptions(false)
+                setGenerateLoftSurface(false)
+                setLoftGuidePlane(false)
+
                 if (canvasDrawStore.getState().selectLines) {
                     setOrbitalLock(true)
                 } else {
@@ -222,6 +252,9 @@ const ToolPanel = () => {
                 setBendPlaneGuide(false)
                 setOpenColorOptions(false)
                 setOpenStrokeOptions(false)
+                setGenerateLoftSurface(false)
+                setLoftGuidePlane(false)
+
                 if (canvasDrawStore.getState().selectGuide) {
                     setOrbitalLock(true)
                 } else {
@@ -239,6 +272,9 @@ const ToolPanel = () => {
                 setOpenColorOptions(false)
                 setOpenStrokeOptions(false)
                 setOrbitalLock(false)
+                setGenerateLoftSurface(false)
+                setLoftGuidePlane(false)
+
                 if (canvasDrawStore.getState().drawGuide) {
                     setOrbitalLock(true)
                 } else {
@@ -258,11 +294,15 @@ const ToolPanel = () => {
                 setOpenColorOptions(false)
                 setOpenStrokeOptions(false)
                 setOrbitalLock(false)
+                setGenerateLoftSurface(false)
+                setLoftGuidePlane(false)
+
                 break
 
             case 'bend_guide':
-                // setDrawGuide(!drawGuide)
                 setBendPlaneGuide(!bendPlaneGuide)
+                setLoftGuidePlane(false)
+                setDrawGuide(false)
                 setOpenDrawShapeOptions(false)
                 setPenActive(false)
                 setEraserActive(false)
@@ -271,11 +311,65 @@ const ToolPanel = () => {
                 setOpenColorOptions(false)
                 setOpenStrokeOptions(false)
                 setOrbitalLock(false)
+                setGenerateLoftSurface(false)
+                setLoftGuidePlane(false)
+
                 if (canvasDrawStore.getState().bendPlaneGuide) {
                     setOrbitalLock(true)
                 } else {
                     setOrbitalLock(false)
                 }
+                break
+
+            case 'loft_guide':
+                setLoftGuidePlane(!loftGuidePlane)
+                setDynamicDrawingPlaneMesh(null)
+                setDrawGuide(false)
+                setBendPlaneGuide(false)
+                setPenActive(false)
+                setEraserActive(false)
+                setSelectLines(false)
+                setSelectGuide(false)
+                setOpenColorOptions(false)
+                setOpenStrokeOptions(false)
+                setOrbitalLock(false)
+                setGenerateLoftSurface(false)
+
+                if (canvasDrawStore.getState().loftGuidePlane) {
+                    setOrbitalLock(true)
+                } else {
+                    setOrbitalLock(false)
+                }
+                break
+
+            case 'cancel_loft_guide':
+                setLoftGuidePlane(!loftGuidePlane)
+                setDynamicDrawingPlaneMesh(null)
+                setDrawGuide(false)
+                setBendPlaneGuide(false)
+                setPenActive(false)
+                setEraserActive(false)
+                setSelectLines(false)
+                setSelectGuide(false)
+                setOpenColorOptions(false)
+                setOpenStrokeOptions(false)
+                setOrbitalLock(false)
+                setGenerateLoftSurface(false)
+                break
+
+            case 'generate_loft_guide':
+                // setLoftGuidePlane(false)
+                setGenerateLoftSurface(true)
+                setDynamicDrawingPlaneMesh(null)
+                setDrawGuide(false)
+                setBendPlaneGuide(false)
+                setPenActive(false)
+                setEraserActive(false)
+                setSelectLines(false)
+                setSelectGuide(false)
+                setOpenColorOptions(false)
+                setOpenStrokeOptions(false)
+                setOrbitalLock(false)
                 break
 
             default:
@@ -505,6 +599,52 @@ const ToolPanel = () => {
         )
     }
 
+    function handleTensionSliderValue(e) {
+        e.preventDefault()
+        setTensionPercentage(parseFloat(e.target.value))
+        const min = e.target.min
+        const max = e.target.max
+        const currentVal = e.target.value
+        // e.target.style.backgroundSize =
+        // let x = ((currentVal - min) / (max - min)) * 100 + '% 100%'
+        setTensionBackground(
+            ((currentVal - min) / (max - min)) * 100 + '% 100%'
+        )
+    }
+
+    function handleRadialPercentage(e) {
+        e.preventDefault()
+        setRadialPercentage(parseFloat(e.target.value))
+        const min = e.target.min
+        const max = e.target.max
+        const currentVal = e.target.value
+        // e.target.style.backgroundSize =
+        // let x = ((currentVal - min) / (max - min)) * 100 + '% 100%'
+        setRadialBackground(((currentVal - min) / (max - min)) * 100 + '% 100%')
+    }
+
+    function handleWaistPercentage(e) {
+        e.preventDefault()
+        setWaistPercentage(parseFloat(e.target.value))
+        const min = e.target.min
+        const max = e.target.max
+        const currentVal = e.target.value
+        // e.target.style.backgroundSize =
+        // let x = ((currentVal - min) / (max - min)) * 100 + '% 100%'
+        setWaistBackground(((currentVal - min) / (max - min)) * 100 + '% 100%')
+    }
+
+    function handlePolyCountSliderValue(e) {
+        e.preventDefault()
+        setPolyCountPercentage(parseFloat(e.target.value))
+        const min = e.target.min
+        const max = e.target.max
+        const currentVal = e.target.value
+        // e.target.style.backgroundSize =
+        // let x = ((currentVal - min) / (max - min)) * 100 + '% 100%'
+        setPolyBackground(((currentVal - min) / (max - min)) * 100 + '% 100%')
+    }
+
     function handleLightIntensitySlider(e) {
         e.preventDefault()
         setLightIntensity(e.target.value)
@@ -579,216 +719,523 @@ const ToolPanel = () => {
 
     return (
         <>
-            <div className="absolute top-4 right-[16px] z-5 flex items-center gap-[4px] p-[4px] rounded-[8px] bg-[#000000] backdrop-blur-2xl">
+            <div className="absolute top-[12px] right-[16px] z-5 flex items-center gap-[4px] p-[4px] rounded-[12px] bg-[#000000]">
                 {!dynamicDrawingPlaneMesh && (
-                    <button
-                        onClick={(e) => handleDraw('draw_guide')}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                            drawGuide ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
-                        }`}
+                    <TooltipAdvanced
+                        text="Draw Guide"
+                        position="bottom"
+                        delay={100}
                     >
-                        <DrawGuidePlaneIcon color="#FFFFFF" size={20} />
-                    </button>
+                        <button
+                            onClick={(e) => handleDraw('draw_guide')}
+                            className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                                drawGuide ? 'bg-[#5D3FD3]' : 'bg-[#000000]'
+                            }`}
+                        >
+                            <GuideIcon color="#FFFFFF" size={20} />
+                        </button>
+                    </TooltipAdvanced>
                 )}
 
                 {dynamicDrawingPlaneMesh && (
-                    <button
-                        onClick={(e) => handleDraw('erase_guide')}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px]`}
+                    <TooltipAdvanced
+                        text="Erase Guide"
+                        position="bottom"
+                        delay={100}
                     >
-                        <EraseGuideIcon color="#FFFFFF" size={20} />
-                    </button>
+                        <button
+                            onClick={(e) => handleDraw('erase_guide')}
+                            className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px]`}
+                        >
+                            <EraseGuideIcon color="#FFFFFF" size={20} />
+                        </button>
+                    </TooltipAdvanced>
                 )}
 
-                {/* {dynamicDrawingPlaneMesh && (
+                {dynamicDrawingPlaneMesh && (
+                    <TooltipAdvanced
+                        text="Bend Guide"
+                        position="bottom"
+                        delay={100}
+                    >
+                        <button
+                            onClick={(e) => handleDraw('bend_guide')}
+                            className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                                bendPlaneGuide ? 'bg-[#5D3FD3]' : 'bg-[#000000]'
+                            }`}
+                        >
+                            <BendGuidePlaneIcon color="#FFFFFF" size={20} />
+                        </button>
+                    </TooltipAdvanced>
+                )}
+
+                <TooltipAdvanced
+                    text="Loft Guide"
+                    position="bottom"
+                    delay={100}
+                >
                     <button
-                        onClick={(e) => handleDraw('selectGuide')}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                            selectGuide ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
+                        onClick={(e) => handleDraw('loft_guide')}
+                        // setBendPlaneGuide(!bendPlaneGuide)}
+                        className={`text-[#FFFFFF] hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                            loftGuidePlane ? 'bg-[#5D3FD3]' : 'bg-[#000000]'
+                        }`}
+                    >
+                        <LoftGuideIcon color="#FFFFFF" size={20} />
+                    </button>
+                </TooltipAdvanced>
+
+                {dynamicDrawingPlaneMesh && (
+                    <TooltipAdvanced
+                        text="Select Guide"
+                        position="bottom"
+                        delay={100}
+                    >
+                        <button
+                            onClick={(e) => handleDraw('selectGuide')}
+                            className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                                selectGuide ? 'bg-[#5D3FD3]' : 'bg-[#000000]'
+                            }`}
+                        >
+                            <SelectIcon color="#FFFFFF" size={20} />
+                        </button>
+                    </TooltipAdvanced>
+                )}
+
+                <div className="px-[8px] text-[#FFFFFF]">|</div>
+
+                <TooltipAdvanced text="Pen" position="bottom" delay={100}>
+                    <button
+                        onClick={(e) => handleDraw('pen')}
+                        className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                            penActive ? 'bg-[#5D3FD3]' : 'bg-[#000000]'
+                        }`}
+                    >
+                        <PenIcon color="#FFFFFF" size={20} />
+                    </button>
+                </TooltipAdvanced>
+
+                <TooltipAdvanced text="Eraser" position="bottom" delay={100}>
+                    <button
+                        onClick={(e) => handleDraw('eraser')}
+                        className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                            eraserActive ? 'bg-[#5D3FD3]' : 'bg-[#000000]'
+                        }`}
+                    >
+                        <EraserIcon color="#FFFFFF" size={20} />
+                    </button>
+                </TooltipAdvanced>
+
+                <TooltipAdvanced
+                    text="Select Lines"
+                    position="bottom"
+                    delay={100}
+                >
+                    <button
+                        onClick={(e) => handleDraw('selectLines')}
+                        className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                            selectLines ? 'bg-[#5D3FD3]' : 'bg-[#000000]'
                         }`}
                     >
                         <SelectIcon color="#FFFFFF" size={20} />
                     </button>
-                )} */}
-
-                {dynamicDrawingPlaneMesh && (
-                    <button
-                        onClick={(e) => handleDraw('bend_guide')}
-                        // setBendPlaneGuide(!bendPlaneGuide)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                            bendPlaneGuide ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
-                        }`}
-                    >
-                        <BendGuidePlaneIcon color="#FFFFFF" size={20} />
-                    </button>
-                )}
-
-                <button
-                    onClick={(e) => handleDraw('pen')}
-                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                        penActive ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
-                    }`}
-                >
-                    <DrawIcon color="#FFFFFF" size={20} />
-                </button>
-
-                <button
-                    onClick={(e) => handleDraw('eraser')}
-                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                        eraserActive ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
-                    }`}
-                >
-                    <EraserIcon color="#FFFFFF" size={20} />
-                </button>
-
-                <button
-                    onClick={(e) => handleDraw('selectLines')}
-                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                        selectLines ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
-                    }`}
-                >
-                    <SelectIcon color="#FFFFFF" size={20} />
-                </button>
+                </TooltipAdvanced>
 
                 <div className="px-[8px] text-[#FFFFFF]">|</div>
 
-                <button
-                    onClick={(e) => handleSceneOptions()}
-                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                        sceneOptions ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
-                    }`}
+                <TooltipAdvanced
+                    text="Scene Options"
+                    position="bottom"
+                    delay={100}
                 >
-                    <RenderIcon color="#FFFFFF" size={20} />
-                </button>
+                    <button
+                        onClick={(e) => handleSceneOptions()}
+                        className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                            sceneOptions ? 'bg-[#5D3FD3]' : 'bg-[#000000]'
+                        }`}
+                    >
+                        <RenderIcon color="#FFFFFF" size={20} />
+                    </button>
+                </TooltipAdvanced>
             </div>
 
-            {penActive && (
-                <div className="absolute top-[72px] left-[16px] z-5 gap-[4px] p-[4px] flex flex-col justify-center rounded-[8px] bg-[#000000]">
-                    <button
-                        onClick={(e) => handleColorChange(e)}
-                        className="text-[#FFFFFF] font-bold flex justify-center items-center m-[8px] cursor-pointer rounded-[4px] border-[0px] "
+            {/* {loftGuidePlane && (
+                <div className="absolute w-[198px] top-[72px] left-[72px] z-5 p-[4px] justify-center rounded-[12px] bg-[#000000] text-[#FFFFFF]">
+                    Tension Percentage
+                    <div className="bg-[#000000] flex flex-col m-[4px]">
+                        <div className="range-container">
+                            <div className="range-wrapper">
+                                <input
+                                    onChange={(e) =>
+                                        handleTensionSliderValue(e)
+                                    }
+                                    type="range"
+                                    name="range"
+                                    id="range-slider"
+                                    step={1}
+                                    value={tensionPercentage}
+                                    min={0}
+                                    max={100}
+                                    style={{
+                                        backgroundSize: tensionBackground,
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-[#000000] m-[4px]">
+                        <div className="mt-[16px]">
+                            <input
+                                // onChange={(e) => handleOpacitySliderValue(e)}
+                                type="number"
+                                className="rounded-[8px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                value={tensionPercentage}
+                                disabled={true}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )} */}
+
+            <div className="absolute funnel-sans-regular text-[#FFFFFF] flex flex-col gap-[8px] top-[72px] left-[16px] text-[12px]">
+                {loftGuidePlane && (
+                    <div className="w-[198px] z-5 p-[4px] justify-center rounded-[12px] bg-[#000000] ">
+                        <div className="p-[12px]">Radial Percentage</div>
+                        <div className="bg-[#000000] flex flex-col m-[4px]">
+                            <div className="range-container">
+                                <div className="range-wrapper">
+                                    <input
+                                        onChange={(e) =>
+                                            handleRadialPercentage(e)
+                                        }
+                                        type="range"
+                                        name="range"
+                                        id="range-slider"
+                                        step={1}
+                                        value={radialPercentage}
+                                        min={0}
+                                        max={100}
+                                        style={{
+                                            backgroundSize: radialBackground,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-[#000000] m-[4px]">
+                            <div className="mt-[16px]">
+                                <input
+                                    // onChange={(e) => handleOpacitySliderValue(e)}
+                                    type="number"
+                                    className="rounded-[8px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                    value={radialPercentage}
+                                    disabled={true}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {loftGuidePlane && (
+                    <div className="w-[198px] z-5 p-[4px] justify-center rounded-[12px] bg-[#000000]">
+                        <div className="p-[12px]">Waist Percentage</div>
+                        <div className="bg-[#000000] flex flex-col m-[4px]">
+                            <div className="range-container">
+                                <div className="range-wrapper">
+                                    <input
+                                        onChange={(e) =>
+                                            handleWaistPercentage(e)
+                                        }
+                                        type="range"
+                                        name="range"
+                                        id="range-slider"
+                                        step={1}
+                                        value={waistPercentage}
+                                        min={0}
+                                        max={100}
+                                        style={{
+                                            backgroundSize: waistBackground,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-[#000000] m-[4px]">
+                            <div className="mt-[16px]">
+                                <input
+                                    // onChange={(e) => handleOpacitySliderValue(e)}
+                                    type="number"
+                                    className="rounded-[8px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                    value={waistPercentage}
+                                    disabled={true}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {loftGuidePlane && (
+                    <div className="w-[198px] left-[16px] z-5 p-[4px] justify-center rounded-[12px] bg-[#000000]">
+                        <div className="p-[12px]">Poly count Percentage</div>
+                        <div className="bg-[#000000] flex flex-col m-[4px]">
+                            <div className="range-container">
+                                <div className="range-wrapper">
+                                    <input
+                                        onChange={(e) =>
+                                            handlePolyCountSliderValue(e)
+                                        }
+                                        type="range"
+                                        name="range"
+                                        id="range-slider"
+                                        step={1}
+                                        value={polyCountPercentage}
+                                        min={1}
+                                        max={50}
+                                        style={{
+                                            backgroundSize: ployBackground,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-[#000000] m-[4px]">
+                            <div className="mt-[16px]">
+                                <input
+                                    // onChange={(e) => handleOpacitySliderValue(e)}
+                                    type="number"
+                                    className="rounded-[8px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                    value={polyCountPercentage}
+                                    disabled={true}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* {loftGuidePlane && (
+                <div className="absolute top-[72px] left-[16px] z-5 gap-[4px] p-[4px] flex flex-col justify-center rounded-[12px] bg-[#000000]">
+                    <TooltipAdvanced
+                        text="Color Select"
+                        position="right"
+                        delay={100}
                     >
-                        <ColorSelectIcon color={color.hex} size={20} />
-                    </button>
-                    <button
-                        onClick={(e) => handleStrokeOptions(e)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px]`}
-                    >
-                        {strokeType === 'taper' && (
-                            <TaperStrokeIcon color={color.hex} size={20} />
-                        )}
-                        {strokeType === 'cube' && (
-                            <CubeStrokeIcon color={color.hex} size={20} />
-                        )}
-                        {strokeType === 'paint' && (
-                            <PaintStrokeIcon color={color.hex} size={20} />
-                        )}
-                        {strokeType === 'belt' && (
-                            <BeltStrokeIcon color={color.hex} size={20} />
-                        )}
-                    </button>
-                    <button
-                        onClick={(e) => handleShapeOptions(e)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                            openDrawShapeOptions
-                                ? 'bg-[#D3D3D3]/25'
-                                : 'bg-[#000000]'
-                        }`}
-                    >
-                        {drawShapeType === 'free_hand' && (
-                            <FreeHandIcon color="#FFFFFF" size={20} />
-                        )}
-                        {drawShapeType === 'straight' && (
-                            <StraightLineIcon color="#FFFFFF" size={20} />
-                        )}
-                        {drawShapeType === 'circle' && (
-                            <CircleIcon color="#FFFFFF" size={20} />
-                        )}
-                        {drawShapeType === 'square' && (
-                            <SquareIcon color="#FFFFFF" size={20} />
-                        )}
-                        {drawShapeType === 'arc' && (
-                            <ArcIcon color="#FFFFFF" size={20} />
-                        )}
-                    </button>
-                    <button
-                        onClick={(e) => handleOpacityOptions(e)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                            openOpacitySlider
-                                ? 'bg-[#D3D3D3]/25'
-                                : 'bg-[#000000]'
-                        }`}
-                    >
-                        <OpacityIcon
-                            color="#FFFFFF"
-                            size={20}
-                            opacity={strokeOpacity}
-                        />
-                    </button>
-                    <button
-                        onClick={(e) => handleWidthOptions(e)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                            openWidthSlider ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
-                        }`}
-                    >
-                        <WidthIcon color="#FFFFFF" size={20} />
-                    </button>
-                    <button
-                        onClick={(e) => handleStableStrokeOptions(e)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                            openStrokeStabler
-                                ? 'bg-[#D3D3D3]/25'
-                                : 'bg-[#000000]'
-                        }`}
-                    >
-                        <StableStrokIcon color="#FFFFFF" size={20} />
-                    </button>
-                    {pressureMode && (
                         <button
-                            onClick={(e) => setPressureMode(false)}
-                            className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] `}
+                            onClick={(e) => handleColorChange(e)}
+                            className="hover:bg-[#5D3FD3] font-bold flex justify-center items-center m-[8px] cursor-pointer rounded-[8px] border-[0px]"
                         >
-                            <PressureActiveIcon color="#FFFFFF" size={20} />
+                            <ColorSelectIcon color={strokeColor} size={20} />
                         </button>
+                    </TooltipAdvanced>
+                </div>
+            )} */}
+            </div>
+
+            {loftGuidePlane && (
+                <div className="funnel-sans-regular absolute bottom-[4px] left-1/2 -translate-x-1/2 -translate-y-1/2 z-5 rounded-[12px]  bg-[#000000]  text-[#FFFFFF]">
+                    <div className="flex justify-center items-center gap-[8px] border-1 border-amber-50 p-[4px]">
+                        <button
+                            onClick={(e) => handleDraw('cancel_loft_guide')}
+                            className="active:scale-90 text-[#FFFFFF] px-[4px] py-[4px] rounded-[8px] border-[#7f2315] bg-[#000000] border-[1px] cursor-pointer"
+                        >
+                            <WrongButtonIcon color="#541c15" size={28} />
+                            {/* Cancel */}
+                        </button>
+
+                        <button
+                            onClick={(e) => handleDraw('generate_loft_guide')}
+                            // className="active:scale-90 text-[#FFFFFF] px-[16px] py-[4px] rounded-[8px] border-[#2cc182] bg-[#000000] border-[1px] cursor-pointer"
+                            className="active:scale-90 text-[#FFFFFF] px-[4px] py-[4px] rounded-[8px] border-[#2cc182] bg-[#000000] border-[1px] cursor-pointer"
+                        >
+                            <CorrectIcon color="#006239" size={28} />
+                            {/* Done */}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {penActive && (
+                <div className="absolute top-[72px] left-[16px] z-5 gap-[4px] p-[4px] flex flex-col justify-center rounded-[12px] bg-[#000000]">
+                    <TooltipAdvanced
+                        text="Color Select"
+                        position="right"
+                        delay={100}
+                    >
+                        <button
+                            onClick={(e) => handleColorChange(e)}
+                            className="hover:bg-[#5D3FD3] font-bold flex justify-center items-center m-[8px] cursor-pointer rounded-[8px] border-[0px]"
+                        >
+                            <ColorSelectIcon color={strokeColor} size={20} />
+                        </button>
+                    </TooltipAdvanced>
+                    <TooltipAdvanced
+                        text="Brushes"
+                        position="right"
+                        delay={100}
+                    >
+                        <button
+                            onClick={(e) => handleStrokeOptions(e)}
+                            className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px]`}
+                        >
+                            {strokeType === 'taper' && (
+                                <TaperStrokeIcon
+                                    color={strokeColor}
+                                    size={20}
+                                />
+                            )}
+                            {strokeType === 'cube' && (
+                                <CubeStrokeIcon color={strokeColor} size={20} />
+                            )}
+                            {strokeType === 'paint' && (
+                                <PaintStrokeIcon
+                                    color={strokeColor}
+                                    size={20}
+                                />
+                            )}
+                            {strokeType === 'belt' && (
+                                <BeltStrokeIcon color={strokeColor} size={20} />
+                            )}
+                        </button>
+                    </TooltipAdvanced>
+                    <TooltipAdvanced
+                        text="Draw Shape"
+                        position="right"
+                        delay={100}
+                    >
+                        <button
+                            onClick={(e) => handleShapeOptions(e)}
+                            className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                                openDrawShapeOptions
+                                    ? 'bg-[#5D3FD3]'
+                                    : 'bg-[#000000]'
+                            }`}
+                        >
+                            {drawShapeType === 'free_hand' && (
+                                <FreeHandIcon color="#FFFFFF" size={20} />
+                            )}
+                            {drawShapeType === 'straight' && (
+                                <StraightLineIcon color="#FFFFFF" size={20} />
+                            )}
+                            {drawShapeType === 'circle' && (
+                                <CircleIcon color="#FFFFFF" size={20} />
+                            )}
+                            {drawShapeType === 'arc' && (
+                                <ArcIcon color="#FFFFFF" size={20} />
+                            )}
+                        </button>
+                    </TooltipAdvanced>
+                    <TooltipAdvanced
+                        text="Opacity"
+                        position="right"
+                        delay={100}
+                    >
+                        <button
+                            onClick={(e) => handleOpacityOptions(e)}
+                            className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                                openOpacitySlider
+                                    ? 'bg-[#5D3FD3]'
+                                    : 'bg-[#000000]'
+                            }`}
+                        >
+                            <OpacityIcon
+                                color="#FFFFFF"
+                                size={20}
+                                opacity={strokeOpacity}
+                            />
+                        </button>
+                    </TooltipAdvanced>
+                    <TooltipAdvanced text="Width" position="right" delay={100}>
+                        <button
+                            onClick={(e) => handleWidthOptions(e)}
+                            className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                                openWidthSlider
+                                    ? 'bg-[#5D3FD3]'
+                                    : 'bg-[#000000]'
+                            }`}
+                        >
+                            <WidthIcon color="#FFFFFF" size={20} />
+                        </button>
+                    </TooltipAdvanced>
+                    <TooltipAdvanced
+                        text="Stable Stroke"
+                        position="right"
+                        delay={100}
+                    >
+                        <button
+                            onClick={(e) => handleStableStrokeOptions(e)}
+                            className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                                openStrokeStabler
+                                    ? 'bg-[#5D3FD3]'
+                                    : 'bg-[#000000]'
+                            }`}
+                        >
+                            <StableStrokIcon color="#FFFFFF" size={20} />
+                        </button>
+                    </TooltipAdvanced>
+
+                    {pressureMode && (
+                        <TooltipAdvanced
+                            text="Pressure Active"
+                            position="right"
+                            delay={100}
+                        >
+                            <button
+                                onClick={(e) => setPressureMode(false)}
+                                className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] `}
+                            >
+                                <PressureActiveIcon color="#FFFFFF" size={20} />
+                            </button>
+                        </TooltipAdvanced>
                     )}
 
                     {!pressureMode && (
-                        <button
-                            onClick={(e) => setPressureMode(true)}
-                            className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] `}
+                        <TooltipAdvanced
+                            text="Pressure Inactive"
+                            position="right"
+                            delay={100}
                         >
-                            <PressureInActiveIcon color="#FFFFFF" size={20} />
-                        </button>
+                            <button
+                                onClick={(e) => setPressureMode(true)}
+                                className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] `}
+                            >
+                                <PressureInActiveIcon
+                                    color="#FFFFFF"
+                                    size={20}
+                                />
+                            </button>
+                        </TooltipAdvanced>
                     )}
-                    <button
-                        onClick={(e) => handleMirrorOptions(e)}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                            mirrorOptions ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
-                        }`}
-                    >
-                        <MirrorIcon color={'#FFFFFF'} size={20} />
-                    </button>
+
+                    <TooltipAdvanced text="Mirror" position="right" delay={100}>
+                        <button
+                            onClick={(e) => handleMirrorOptions(e)}
+                            className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                                mirrorOptions ? 'bg-[#5D3FD3]' : 'bg-[#000000]'
+                            }`}
+                        >
+                            <MirrorIcon color={'#FFFFFF'} size={20} />
+                        </button>
+                    </TooltipAdvanced>
                 </div>
             )}
 
             {penActive && openColorOptions && (
-                <div
-                    onPointerUp={(e) => setStrokeColor(color.hex)}
-                    className="absolute top-[72px] left-[72px] z-5 p-[0px] rounded-[8px] bg-[#000000] border-[0px]"
-                >
-                    <ColorPicker
-                        color={color}
-                        onChange={setColor}
-                        onChangeComplete={(e) => setStrokeColor(color.hex)}
-                        height={150}
-                        hideInput={['rgb', 'hsv']}
-                        hideAlpha={true}
+                <div className="absolute top-[72px] left-[72px] z-5 p-[4px] rounded-[12px] bg-[#000000] border-[12px]">
+                    <ColorHexPicker
+                        value={strokeColor} // renamed prop to value (authoritative color)
+                        onChange={setStrokeColor}
                     />
-                    <div className="items-center justify-between m-[12px]">
-                        <div className="bg-[#000000] flex justify-around">
+                    <div className="text-[#FFFFFF] funnel-sans-regular mx-[8px] my-[12px]">
+                        Material
+                    </div>
+                    <div className="flex justify-around items-center mt-[12px] bg-[#000000] ">
+                        <TooltipAdvanced
+                            text="Flat"
+                            position="bottom"
+                            delay={100}
+                        >
                             <button
                                 onClick={(e) => setActiveMaterialType('flat')}
-                                className=" text-[#FFFFFF] font-bold cursor-pointer"
+                                className="cursor-pointer"
                             >
                                 <FlatShadeIcon
                                     color={
@@ -799,9 +1246,15 @@ const ToolPanel = () => {
                                     size={38}
                                 />
                             </button>
+                        </TooltipAdvanced>
+                        <TooltipAdvanced
+                            text="Shaded"
+                            position="bottom"
+                            delay={100}
+                        >
                             <button
                                 onClick={(e) => setActiveMaterialType('shaded')}
-                                className=" text-[#FFFFFF] font-bold cursor-pointer"
+                                className="cursor-pointer"
                             >
                                 <RespondShadeIcon
                                     color={
@@ -812,9 +1265,15 @@ const ToolPanel = () => {
                                     size={38}
                                 />
                             </button>
+                        </TooltipAdvanced>
+                        <TooltipAdvanced
+                            text="Emissive"
+                            position="bottom"
+                            delay={100}
+                        >
                             <button
                                 onClick={(e) => setActiveMaterialType('glow')}
-                                className=" text-[#FFFFFF] font-bold cursor-pointer"
+                                className="cursor-pointer"
                             >
                                 <GlowShadeIcon
                                     color={
@@ -825,66 +1284,137 @@ const ToolPanel = () => {
                                     size={38}
                                 />
                             </button>
-                        </div>
+                        </TooltipAdvanced>
                     </div>
                 </div>
             )}
 
+            {/* {loftGuidePlane && openColorOptions && (
+                <div className="absolute top-[72px] left-[72px] z-5 p-[4px] rounded-[12px] bg-[#000000] border-[12px]">
+                    <ColorHexPicker
+                        value={strokeColor} // renamed prop to value (authoritative color)
+                        onChange={setStrokeColor}
+                    />
+                    <div className="text-[#FFFFFF] funnel-sans-regular mx-[8px] my-[12px]">
+                        Material
+                    </div>
+                    <div className="flex justify-around items-center mt-[12px] bg-[#000000] ">
+                        <TooltipAdvanced
+                            text="Flat"
+                            position="bottom"
+                            delay={100}
+                        >
+                            <button
+                                onClick={(e) => setActiveMaterialType('flat')}
+                                className="cursor-pointer"
+                            >
+                                <FlatShadeIcon
+                                    color={
+                                        activeMaterialType === 'flat'
+                                            ? '#FFFFFF'
+                                            : '#B7B7B7'
+                                    }
+                                    size={38}
+                                />
+                            </button>
+                        </TooltipAdvanced>
+                        <TooltipAdvanced
+                            text="Shaded"
+                            position="bottom"
+                            delay={100}
+                        >
+                            <button
+                                onClick={(e) => setActiveMaterialType('shaded')}
+                                className="cursor-pointer"
+                            >
+                                <RespondShadeIcon
+                                    color={
+                                        activeMaterialType === 'shaded'
+                                            ? '#FFFFFF'
+                                            : '#B7B7B7'
+                                    }
+                                    size={38}
+                                />
+                            </button>
+                        </TooltipAdvanced>
+                        <TooltipAdvanced
+                            text="Emissive"
+                            position="bottom"
+                            delay={100}
+                        >
+                            <button
+                                onClick={(e) => setActiveMaterialType('glow')}
+                                className="cursor-pointer"
+                            >
+                                <GlowShadeIcon
+                                    color={
+                                        activeMaterialType === 'glow'
+                                            ? '#FFFFFF'
+                                            : '#B7B7B7'
+                                    }
+                                    size={38}
+                                />
+                            </button>
+                        </TooltipAdvanced>
+                    </div>
+                </div>
+            )} */}
+
             {penActive && openStrokeOptions && (
-                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[8px]  bg-[#000000]">
+                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[12px]  bg-[#000000]">
                     {/* <p className="text-left text-[12px] block funnel-sans-regular text-[#ffffff] mb-[8px]">
                         Stroke
                     </p> */}
                     <button
                         onClick={(e) => handleStroke('taper')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                        className={` hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
                             strokeType === 'taper'
-                                ? 'bg-[#D3D3D3]/25'
+                                ? 'bg-[#5D3FD3]'
                                 : 'bg-[#000000]'
                         }`}
                     >
-                        <TaperStrokeIcon color={color.hex} size={20} />
+                        <TaperStrokeIcon color={strokeColor} size={20} />
                     </button>
                     <button
                         onClick={(e) => handleStroke('cube')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                        className={` hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
                             strokeType === 'cube'
-                                ? 'bg-[#D3D3D3]/25'
+                                ? 'bg-[#5D3FD3]'
                                 : 'bg-[#000000]'
                         }`}
                     >
-                        <CubeStrokeIcon color={color.hex} size={20} />
+                        <CubeStrokeIcon color={strokeColor} size={20} />
                     </button>
                     <button
                         onClick={(e) => handleStroke('paint')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                        className={` hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
                             strokeType === 'paint'
-                                ? 'bg-[#D3D3D3]/25'
+                                ? 'bg-[#5D3FD3]'
                                 : 'bg-[#000000]'
                         }`}
                     >
-                        <PaintStrokeIcon color={color.hex} size={20} />
+                        <PaintStrokeIcon color={strokeColor} size={20} />
                     </button>
                     <button
                         onClick={(e) => handleStroke('belt')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                        className={` hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
                             strokeType === 'belt'
-                                ? 'bg-[#D3D3D3]/25'
+                                ? 'bg-[#5D3FD3]'
                                 : 'bg-[#000000]'
                         }`}
                     >
-                        <BeltStrokeIcon color={color.hex} size={20} />
+                        <BeltStrokeIcon color={strokeColor} size={20} />
                     </button>
                 </div>
             )}
 
             {penActive && openDrawShapeOptions && (
-                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[8px]  bg-[#000000]">
+                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[12px] bg-[#000000]">
                     <button
                         onClick={(e) => handleShape('free_hand')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                        className={` hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
                             drawShapeType === 'free_hand'
-                                ? 'bg-[#D3D3D3]/25'
+                                ? 'bg-[#5D3FD3]'
                                 : 'bg-[#000000]'
                         }`}
                     >
@@ -892,9 +1422,9 @@ const ToolPanel = () => {
                     </button>
                     <button
                         onClick={(e) => handleShape('straight')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                        className={` hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
                             drawShapeType === 'straight'
-                                ? 'bg-[#D3D3D3]/25'
+                                ? 'bg-[#5D3FD3]'
                                 : 'bg-[#000000]'
                         }`}
                     >
@@ -902,29 +1432,19 @@ const ToolPanel = () => {
                     </button>
                     <button
                         onClick={(e) => handleShape('circle')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                        className={` hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
                             drawShapeType === 'circle'
-                                ? 'bg-[#D3D3D3]/25'
+                                ? 'bg-[#5D3FD3]'
                                 : 'bg-[#000000]'
                         }`}
                     >
                         <CircleIcon color="#FFFFFF" size={20} />
                     </button>
                     <button
-                        onClick={(e) => handleShape('square')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
-                            drawShapeType === 'square'
-                                ? 'bg-[#D3D3D3]/25'
-                                : 'bg-[#000000]'
-                        }`}
-                    >
-                        <SquareIcon color="#FFFFFF" size={20} />
-                    </button>
-                    <button
                         onClick={(e) => handleShape('arc')}
-                        className={` text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                        className={` hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
                             drawShapeType === 'arc'
-                                ? 'bg-[#D3D3D3]/25'
+                                ? 'bg-[#5D3FD3]'
                                 : 'bg-[#000000]'
                         }`}
                     >
@@ -934,7 +1454,7 @@ const ToolPanel = () => {
             )}
 
             {penActive && openOpacitySlider && (
-                <div className="absolute w-[198px] top-[72px] left-[72px] z-5 p-[4px] justify-center rounded-[8px] bg-[#000000]">
+                <div className="absolute w-[198px] top-[72px] left-[72px] z-5 p-[4px] justify-center rounded-[12px] bg-[#000000] text-[#FFFFFF]">
                     <div className="bg-[#000000] flex flex-col m-[4px]">
                         <div className="range-container">
                             <div className="range-wrapper">
@@ -947,7 +1467,7 @@ const ToolPanel = () => {
                                     id="range-slider"
                                     step={0.1}
                                     value={strokeOpacity}
-                                    min={0.1}
+                                    min={0.0}
                                     max={1}
                                     style={{
                                         backgroundSize: opacityBackground,
@@ -962,7 +1482,7 @@ const ToolPanel = () => {
                             <input
                                 // onChange={(e) => handleOpacitySliderValue(e)}
                                 type="number"
-                                className="text-[#FFFFFF] rounded-[4px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                className="rounded-[8px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
                                 value={strokeOpacity}
                                 disabled={true}
                             />
@@ -972,7 +1492,7 @@ const ToolPanel = () => {
             )}
 
             {penActive && openWidthSlider && (
-                <div className="absolute w-[198px] top-[72px] left-[72px] z-5 p-[4px] justify-center rounded-[8px] bg-[#000000]">
+                <div className="absolute w-[198px] top-[72px] left-[72px] z-5 p-[4px] justify-center rounded-[12px] bg-[#000000] text-[#FFFFFF]">
                     <div className="bg-[#000000] flex flex-col m-[4px]">
                         <div className="range-container">
                             <div className="range-wrapper">
@@ -981,9 +1501,9 @@ const ToolPanel = () => {
                                     type="range"
                                     name="range"
                                     id="range-slider"
-                                    step={0.01}
+                                    step={0.05}
                                     value={strokeWidth}
-                                    min={0.01}
+                                    min={0.05}
                                     max={5}
                                     style={{
                                         backgroundSize: widthBackground,
@@ -998,7 +1518,7 @@ const ToolPanel = () => {
                             <input
                                 // onChange={(e) => handleWidthSliderValue(e)}
                                 type="number"
-                                className="  text-[#FFFFFF] rounded-[4px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                className="rounded-[8px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
                                 value={strokeWidth}
                                 disabled={true}
                             />
@@ -1008,7 +1528,7 @@ const ToolPanel = () => {
             )}
 
             {penActive && openStrokeStabler && (
-                <div className="absolute w-[198px] top-[72px] left-[72px] z-5 p-[4px] justify-center rounded-[8px] bg-[#000000]">
+                <div className="absolute w-[198px] top-[72px] left-[72px] z-5 p-[4px] justify-center rounded-[12px] bg-[#000000] text-[#FFFFFF]">
                     <div className="bg-[#000000] flex flex-col m-[4px]">
                         <div className="range-container">
                             <div className="range-wrapper">
@@ -1035,7 +1555,7 @@ const ToolPanel = () => {
                         <div className="mt-[16px]">
                             <input
                                 type="number"
-                                className="  text-[#FFFFFF] rounded-[4px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                className="rounded-[8px] block w-[72px] text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
                                 value={strokeStablePercentage}
                                 disabled={true}
                             />
@@ -1045,12 +1565,12 @@ const ToolPanel = () => {
             )}
 
             {penActive && mirrorOptions && (
-                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[8px] bg-[#000000]">
+                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[12px] bg-[#000000]">
                     <button
                         onClick={(e) => handleMirroring('X')}
                         className={`${
                             mirror.x ? 'bg-[#DE3163]/50' : 'bg-[#000000]'
-                        }  text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px]`}
+                        }  active:scale-90 font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px]`}
                     >
                         <MirrorIcon color="#DE3163" size={20} />
                     </button>
@@ -1058,7 +1578,7 @@ const ToolPanel = () => {
                         onClick={(e) => handleMirroring('Y')}
                         className={`${
                             mirror.y ? 'bg-[#50C878]/50' : 'bg-[#000000]'
-                        }  text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px]`}
+                        }  active:scale-90 font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px]`}
                     >
                         <MirrorIcon color="#50C878" size={20} />
                     </button>
@@ -1066,7 +1586,7 @@ const ToolPanel = () => {
                         onClick={(e) => handleMirroring('Z')}
                         className={`${
                             mirror.z ? 'bg-[#0096FF]/50' : 'bg-[#000000]'
-                        }  text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px]`}
+                        }  active:scale-90 font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px]`}
                     >
                         <MirrorIcon color="#0096FF" size={20} />
                     </button>
@@ -1074,10 +1594,10 @@ const ToolPanel = () => {
             )}
 
             {(drawGuide || bendPlaneGuide) && (
-                <div className="absolute top-[72px] left-[16px] z-5 p-[4px] flex flex-col justify-center rounded-[8px] bg-[#000000]">
+                <div className="absolute top-[72px] left-[16px] z-5 p-[4px] flex flex-col justify-center rounded-[12px] bg-[#000000]">
                     <button
                         onClick={(e) => handleShapeOptions(e)}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                        className=" hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px]"
                     >
                         {drawShapeType === 'free_hand' && (
                             <FreeHandIcon color="#FFFFFF" size={20} />
@@ -1088,9 +1608,7 @@ const ToolPanel = () => {
                         {drawShapeType === 'circle' && (
                             <CircleIcon color="#FFFFFF" size={20} />
                         )}
-                        {drawShapeType === 'square' && (
-                            <SquareIcon color="#FFFFFF" size={20} />
-                        )}
+
                         {drawShapeType === 'arc' && (
                             <ArcIcon color="#FFFFFF" size={20} />
                         )}
@@ -1099,34 +1617,28 @@ const ToolPanel = () => {
             )}
 
             {(drawGuide || bendPlaneGuide) && openDrawShapeOptions && (
-                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[8px]  bg-[#000000]">
+                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[12px] bg-[#000000]">
                     <button
                         onClick={(e) => handleShape('free_hand')}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                        className=" hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px]"
                     >
                         <FreeHandIcon color="#FFFFFF" size={20} />
                     </button>
                     <button
                         onClick={(e) => handleShape('straight')}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                        className=" hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px]"
                     >
                         <StraightLineIcon color="#FFFFFF" size={20} />
                     </button>
                     <button
                         onClick={(e) => handleShape('circle')}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                        className=" hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px]"
                     >
                         <CircleIcon color="#FFFFFF" size={20} />
                     </button>
                     <button
-                        onClick={(e) => handleShape('square')}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
-                    >
-                        <SquareIcon color="#FFFFFF" size={20} />
-                    </button>
-                    <button
                         onClick={(e) => handleShape('arc')}
-                        className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                        className=" hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px]"
                     >
                         <ArcIcon color="#FFFFFF" size={20} />
                     </button>
@@ -1134,24 +1646,21 @@ const ToolPanel = () => {
             )}
 
             {(selectLines || selectGuide) && (
-                <div className="absolute top-[72px] left-[16px] z-5 p-[4px] flex flex-col justify-center rounded-[8px] bg-[#000000]">
+                <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[16px] z-5 p-[4px] rounded-[12px] bg-[#000000]">
                     {selectLines && (
                         <button
-                            onClick={(e) => handleSelectedColorChange(e)}
-                            className="text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                            onClick={(e) => handleColorChange(e)}
+                            className="hover:bg-[#5D3FD3] font-bold flex justify-center items-center m-[8px] cursor-pointer rounded-[8px] border-[0px]"
                         >
-                            <ColorSelectIcon
-                                color={selectedLinesColor.hex}
-                                size={20}
-                            />
+                            <ColorSelectIcon color={lineColor} size={20} />
                         </button>
                     )}
 
                     <button
                         onClick={(e) => setTransformMode('translate')}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                        className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
                             transformMode === 'translate'
-                                ? 'bg-[#D3D3D3]/25'
+                                ? 'bg-[#5D3FD3]'
                                 : 'bg-[#000000]'
                         }`}
                     >
@@ -1160,9 +1669,9 @@ const ToolPanel = () => {
 
                     <button
                         onClick={(e) => setTransformMode('rotate')}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                        className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
                             transformMode === 'rotate'
-                                ? 'bg-[#D3D3D3]/25'
+                                ? 'bg-[#5D3FD3]'
                                 : 'bg-[#000000]'
                         }`}
                     >
@@ -1171,9 +1680,9 @@ const ToolPanel = () => {
 
                     <button
                         onClick={(e) => setTransformMode('scale')}
-                        className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[4px] border-[0px] ${
+                        className={`hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
                             transformMode === 'scale'
-                                ? 'bg-[#D3D3D3]/25'
+                                ? 'bg-[#5D3FD3]'
                                 : 'bg-[#000000]'
                         }`}
                     >
@@ -1183,7 +1692,7 @@ const ToolPanel = () => {
                     {axisMode === 'world' && (
                         <button
                             onClick={(e) => setAxisMode('local')}
-                            className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                            className=" hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px]"
                         >
                             <GlobalModeIcon color="#FFFFFF" size={20} />
                         </button>
@@ -1192,7 +1701,7 @@ const ToolPanel = () => {
                     {axisMode === 'local' && (
                         <button
                             onClick={(e) => setAxisMode('world')}
-                            className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                            className=" hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px]"
                         >
                             <LocalModeIcon color="#FFFFFF" />
                         </button>
@@ -1202,7 +1711,7 @@ const ToolPanel = () => {
                         <button
                             disabled={copy}
                             onClick={(e) => setCopy(!copy)}
-                            className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                            className=" hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px]"
                         >
                             <CopyIcon color="#FFFFFF" size={20} />
                         </button>
@@ -1214,7 +1723,7 @@ const ToolPanel = () => {
                             onClick={(e) =>
                                 setMergeGeometries(!mergeGeometries)
                             }
-                            className=" text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[4px]"
+                            className=" hover:bg-[#5D3FD3] font-bold p-[8px] cursor-pointer rounded-[8px]"
                         >
                             <LinkIcon color="#FFFFFF" size={20} />
                         </button>
@@ -1223,26 +1732,13 @@ const ToolPanel = () => {
             )}
 
             {selectLines && openColorOptions && (
-                <div
-                    onChange={(e) => setLineColor(selectedLinesColor.hex)}
-                    onPointerUp={(e) => setLineColor(selectedLinesColor.hex)}
-                    className="funnel-sans-regular absolute top-[72px] left-[72px] z-5 p-[0px] rounded-[8px]"
-                >
-                    <ColorPicker
-                        color={selectedLinesColor}
-                        onChange={setSelectedLinesColor}
-                        onChangeComplete={(e) =>
-                            setLineColor(selectedLinesColor.hex)
-                        }
-                        height={150}
-                        hideInput={['rgb', 'hsv']}
-                        hideAlpha={true}
-                    />
+                <div className="funnel-sans-regular absolute top-[72px] left-[72px] z-5 p-[8px] bg-[#000000] border-[0px] rounded-[12px]">
+                    <ColorHexPicker value={lineColor} onChange={setLineColor} />
                 </div>
             )}
 
             {sceneOptions && (
-                <div className="absolute w-[240px] top-[72px] right-[16px] text-[#FFFFFF] z-5 p-[4px] rounded-[8px] bg-[#000000]">
+                <div className="absolute w-[240px] top-[72px] right-[16px] z-5 p-[4px] rounded-[12px] bg-[#000000]">
                     <div className="flex justify-around mb-[8px]">
                         <div
                             onClick={(e) => handleSceneActiveOptions('groups')}
@@ -1250,7 +1746,7 @@ const ToolPanel = () => {
                                 groupOptions
                                     ? ' border-[#00A36C]'
                                     : ' border-[#121212]'
-                            }    font-bold p-[8px] cursor-pointer border-b-[2px] rounded-t-[4px]`}
+                            } font-bold p-[8px] cursor-pointer border-b-[2px] rounded-t-[4px]`}
                         >
                             <GroupingIcon color="#FFFFFF" size={20} />
                         </div>
@@ -1261,7 +1757,7 @@ const ToolPanel = () => {
                                 renderOptions
                                     ? 'border-[#00A36C]'
                                     : 'border-[#121212]'
-                            }    font-bold p-[8px] cursor-pointer border-b-[2px] rounded-t-[4px]`}
+                            }  font-bold p-[8px] cursor-pointer border-b-[2px] rounded-t-[4px]`}
                         >
                             <SceneOptionIcon color="#FFFFFF" size={20} />
                         </div>
@@ -1271,27 +1767,27 @@ const ToolPanel = () => {
                         <div className="flex justify-center mb-[8px]">
                             <div
                                 onClick={(e) => handleGroupOperation('add')}
-                                className="   font-bold p-[8px] cursor-pointer rounded-[4px]"
+                                className="hover:bg-[#5D3FD3] p-[8px] cursor-pointer rounded-[8px]"
                             >
                                 <AddIcon color="#FFFFFF" size={20} />
                             </div>
                             <div
                                 onClick={(e) => handleGroupOperation('rename')}
-                                className="   font-bold p-[8px] cursor-pointer rounded-[4px]"
+                                className="hover:bg-[#5D3FD3] p-[8px] cursor-pointer rounded-[8px]"
                             >
                                 <RenameIcon color="#FFFFFF" size={20} />
                             </div>
                             <div
                                 onClick={(e) => handleGroupOperation('copy')}
-                                className="   font-bold p-[8px] cursor-pointer rounded-[4px]"
+                                className="hover:bg-[#5D3FD3] p-[8px] cursor-pointer rounded-[8px]"
                             >
                                 <CopyIcon color="#FFFFFF" size={20} />
                             </div>
                             <div
                                 onClick={(e) => handleGroupOperation('delete')}
-                                className="   font-bold p-[8px] cursor-pointer rounded-[4px]"
+                                className="hover:bg-[#5D3FD3] p-[8px] cursor-pointer rounded-[8px]"
                             >
-                                <DeleteIcon color="#FF3131" size={20} />
+                                <DeleteIcon color="#FFFFFF" size={20} />
                             </div>
                         </div>
                     )}
@@ -1308,14 +1804,14 @@ const ToolPanel = () => {
                                 return (
                                     <div
                                         key={key}
-                                        className="text-[16px] z-5 m-[4px] flex flex-col rounded-[4px] text-[#000000] funnel-sans-regular "
+                                        className="text-[16px] z-5 m-[4px] flex flex-col rounded-[8px] text-[#000000] funnel-sans-regular "
                                     >
                                         <div
                                             className={`${
                                                 data.active
-                                                    ? 'bg-[#00A36C]'
+                                                    ? 'bg-[#5D3FD3]'
                                                     : 'bg-[#FFFFFF]'
-                                            } flex cursor-pointer justify-between items-center rounded-[4px] px-[8px]`}
+                                            } flex cursor-pointer justify-between items-center rounded-[8px] px-[8px]`}
                                         >
                                             <label className="cursor-pointer">
                                                 <input
@@ -1351,7 +1847,6 @@ const ToolPanel = () => {
                                                 }
                                                 className="p-[4px] w-full mx-[8px]"
                                             >
-                                                {/* {data.name} */}
                                                 {data.name.length > 13
                                                     ? `${data.name.slice(
                                                           0,
@@ -1364,7 +1859,7 @@ const ToolPanel = () => {
                                                 onClick={(e) =>
                                                     handleGroupVisibility(data)
                                                 }
-                                                className="flex justify-between gap-[8px] items-center p-[4px] rounded-[4px]"
+                                                className="flex justify-between gap-[8px] items-center p-[4px] rounded-[8px]"
                                             >
                                                 {data.visible && (
                                                     <EyeOpenIcon
@@ -1385,92 +1880,8 @@ const ToolPanel = () => {
                             })}
                     </div>
 
-                    {/* <div className="max-h-[500px] min-h-[500px] overflow-y-auto custom-scrollbar">
-                        {sceneOptions &&
-                            groupOptions &&
-                            groupData.map((data, key) => {
-                                return (
-                                    <div
-                                        key={key}
-                                        className="text-[16px] z-5 m-[4px] flex flex-col rounded-[4px] text-[#000000] funnel-sans-regular"
-                                    >
-                                        <div
-                                            className={`${
-                                                data.active
-                                                    ? 'bg-[#00A36C]'
-                                                    : 'bg-[#FFFFFF]'
-                                            } flex cursor-pointer justify-between items-center rounded-[4px] px-[8px]`}
-                                        >
-                                            <label
-                                                className="cursor-pointer"
-                                                onClick={(e) => {
-                                                    e.preventDefault()
-                                                    e.stopPropagation()
-                                                }}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    className="peer sr-only"
-                                                    checked={selectedGroups.some(
-                                                        (group) =>
-                                                            group.uuid ===
-                                                            data.uuid
-                                                    )}
-                                                    onChange={(e) =>
-                                                        handleSelectGroup(
-                                                            e,
-                                                            data
-                                                        )
-                                                    }
-                                                    onFocus={(e) =>
-                                                        e.preventDefault()
-                                                    }
-                                                />
-                                                <div
-                                                    className={`w-[16px] h-[16px] rounded-[20px] bg-[#ffffff] border-[0px] border-blue-600 peer-checked:bg-blue-600 flex items-center justify-center flex-shrink-0`}
-                                                >
-                                                    <CorrectIcon
-                                                        size={10}
-                                                        color="#FFFFFF"
-                                                    />
-                                                </div>
-                                            </label>
-                                            <div
-                                                onClick={(e) =>
-                                                    handleActiveGroup(data)
-                                                }
-                                                className="p-[4px] w-full mx-[8px]"
-                                            >
-                                                {data.name}
-                                            </div>
-
-                                            <div
-                                                onClick={(e) =>
-                                                    handleGroupVisibility(data)
-                                                }
-                                                className="flex justify-between gap-[8px] items-center p-[4px] rounded-[4px] flex-shrink-0"
-                                            >
-                                                {data.visible && (
-                                                    <EyeOpenIcon
-                                                        color="#000000"
-                                                        size={20}
-                                                    />
-                                                )}
-                                                {!data.visible && (
-                                                    <EyeCloseIcon
-                                                        color="#000000"
-                                                        size={20}
-                                                    />
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                    </div> */}
-
                     {sceneOptions && renderOptions && (
-                        <div className="funnel-sans-regular text-[#FFFFFF] z-5 items-center rounded-[4px] w-full bg-[#000000]">
+                        <div className="funnel-sans-regular z-5 items-center rounded-[12px] w-full bg-[#000000] text-[#FFFFFF]">
                             <div className="flex justify-between items-center px-[12px]">
                                 <div className="flex justify-between items-center">
                                     <div className="font-bold p-[8px] cursor-pointer flex gap-[12px]">
@@ -1508,7 +1919,7 @@ const ToolPanel = () => {
                                 </div>
                             </div>
 
-                            <div className="m-[12px] flex items-center justify-between">
+                            <div className="m-[12px] flex items-center justify-between border-t-[1px]">
                                 <div className="text-[12px]">Post Process</div>
                                 {postProcess && (
                                     <div
@@ -1599,23 +2010,10 @@ const ToolPanel = () => {
                                 )}
                             </div>
 
-                            <div
-                                onPointerUp={(e) =>
-                                    setCanvasBackgroundColor(canvasColor.hex)
-                                }
-                                className="mt-[12px]"
-                            >
-                                <ColorPicker
-                                    color={canvasColor}
-                                    onChange={setCanvasColor}
-                                    // onChangeComplete={(e) =>
-                                    //     setCanvasBackgroundColor(
-                                    //         canvasColor.hex
-                                    //     )
-                                    // }
-                                    height={150}
-                                    hideInput={['rgb', 'hsv']}
-                                    hideAlpha={true}
+                            <div className="mt-[12px] p-[12px] border-t-[1px]">
+                                <ColorHexPicker
+                                    value={canvasBackgroundColor}
+                                    onChange={setCanvasBackgroundColor}
                                 />
                             </div>
                         </div>

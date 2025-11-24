@@ -1,6 +1,6 @@
 import React from 'react'
 
-const CorrectIcon = ({ color, size }) => {
+const WrongButtonIcon = ({ color, size }) => {
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -11,14 +11,14 @@ const CorrectIcon = ({ color, size }) => {
         >
             <rect x="0.5" y="0.5" width="23" height="23" stroke="none" />
             <path
-                d="M3 14L8 19"
+                d="M5 5L19 19"
                 stroke={color}
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
             />
             <path
-                d="M8 19L14.5 12L21 5"
+                d="M5 19L19 5"
                 stroke={color}
                 strokeWidth="1.5"
                 strokeLinecap="round"
@@ -28,4 +28,4 @@ const CorrectIcon = ({ color, size }) => {
     )
 }
 
-export default CorrectIcon
+export default WrongButtonIcon

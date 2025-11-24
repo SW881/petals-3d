@@ -1,6 +1,6 @@
 import React from 'react'
 
-const ShowGrid = ({ color, size }) => {
+const GridIcon = ({ color, size }) => {
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -20,4 +20,4 @@ const ShowGrid = ({ color, size }) => {
     )
 }
 
-export default ShowGrid
+export default GridIcon

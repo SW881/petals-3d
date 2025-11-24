@@ -36,6 +36,17 @@
     }
 }
 
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 /* Existing styles */
 html,
 body {
@@ -156,7 +167,7 @@ body,
     height: 100%;
     margin: 0;
     padding: 0;
-    background-color: #28282b;
+    background-color: #171717;
 }
 
 .app-container {
@@ -165,7 +176,7 @@ body,
     align-items: center;
     height: 100vh;
     width: 100vw;
-    background-color: #28282b;
+    background-color: #171717;
     /* box-sizing: border-box; */
 }
 

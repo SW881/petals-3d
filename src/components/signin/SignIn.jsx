@@ -179,7 +179,7 @@ const SignIn = () => {
                             <div className="text-[12px] text-[#C0C0C0]">
                                 Sign in to your account
                             </div>
-                            <div className="flex md:w-[370px] p-[8px] justify-center items-center border-[1px] gap-[8px] my-[32px] self-center px-[24px] py-[4px] rounded-[4px] cursor-pointer">
+                            <div className="flex md:w-[370px] p-[8px] justify-center items-center border-[1px] border-[#606060] gap-[8px] my-[32px] self-center px-[24px] py-[4px] rounded-[4px] cursor-pointer">
                                 <div className="text-[20px] p-[4px] rounded-[4px]">
                                     <GoogleIcon color="#FFFFFF" size={24} />
                                 </div>
@@ -200,7 +200,7 @@ const SignIn = () => {
                                                 handleEmailChange(e)
                                             }
                                             type="email"
-                                            className="border-[1px] border-[#d9d9d9] rounded-[4px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                            className="border-[1px] border-[#606060] rounded-[4px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
                                             placeholder="you@example.com"
                                             required
                                             disabled={loading}
@@ -230,17 +230,17 @@ const SignIn = () => {
                                                         !hidePassowrd
                                                     )
                                                 }
-                                                className="absolute border-[1px] border-[#d9d9d9] px-[4px] rounded-[4px] right-[8px] top-1/2 -translate-y-1/2 hover:bg-[#f5f5f5]"
+                                                className="cursor-pointer absolute border-[1px] border-[#606060] px-[4px] rounded-[4px] right-[8px] top-1/2 -translate-y-1/2 hover:bg-[#606060]"
                                             >
                                                 {hidePassowrd ? (
                                                     <EyeOpenIcon
                                                         color="#d9d9d9"
-                                                        size={24}
+                                                        size={20}
                                                     />
                                                 ) : (
                                                     <EyeCloseIcon
                                                         color="#d9d9d9"
-                                                        size={24}
+                                                        size={20}
                                                     />
                                                 )}
                                             </div>
@@ -254,7 +254,7 @@ const SignIn = () => {
                                                         : 'text'
                                                 }
                                                 autoComplete="on"
-                                                className="border-[1px] border-[#d9d9d9] rounded-[4px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                                className="border-[1px] border-[#606060] rounded-[4px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
                                                 required
                                                 disabled={loading}
                                             />
@@ -358,15 +358,15 @@ const SignIn = () => {
                                         !userInputs.password
                                     }
                                     onClick={(e) => handleSignIn(e)}
-                                    className="active:scale-95 flex w-full p-[4px] text-[16px] justify-center items-center gap-[8px] mt-[32px] self-center px-[24px] py-[8px] rounded-[4px] bg-[#50C878] cursor-pointer"
+                                    className="active:scale-90 flex w-full p-[4px] text-[16px] justify-center items-center gap-[8px] mt-[32px] self-center px-[24px] py-[8px] rounded-[4px] bg-[#5D3FD3] cursor-pointer"
                                 >
-                                    <div className="text-[#000000] flex items-center justify-center gap-[4px]">
+                                    <div className="text-[#FFFFFF] flex items-center justify-center gap-[4px]">
                                         Sign In
                                     </div>
                                 </button>
                             </form>
 
-                            <div className="self-center mt-[16px] flex justify-center items-center">
+                            {/* <div className="self-center mt-[16px] flex justify-center items-center">
                                 <div className="flex gap-[2px] text-[12px]">
                                     <div>Don't have an account?</div>
                                     <Link to="/sign-up">
@@ -375,7 +375,7 @@ const SignIn = () => {
                                         </div>
                                     </Link>
                                 </div>
-                            </div>
+                            </div> */}
                         </div>
                     </div>
                     <div className="text-center mt-[32px] flex justify-center px-[12px] text-[12px] funnel-sans-regular text-[#747474]">
