@@ -3,12 +3,13 @@ import React from 'react'
 import LockIcon from '../svg-icons/LockIcon'
 import UndoIcon from '../svg-icons/UndoIcon'
 import RedoIcon from '../svg-icons/RedoIcon'
-import ShowGrid from '../svg-icons/ShowGrid'
+import GridIcon from '../svg-icons/GridIcon'
 import CameraFovIcon from '../svg-icons/CameraFovIcon'
 import OrthograhicView from '../svg-icons/OrthograhicView'
 
 import { drawStore } from '../../hooks/useDrawStore'
 import { canvasViewStore } from '../../hooks/useCanvasViewStore'
+import TooltipAdvanced from '../info/TooltipAdvanced'
 
 const ViewsPanel = () => {
     const {
@@ -87,65 +88,85 @@ const ViewsPanel = () => {
 
     return (
         <>
-            <div className="flex flex-col gap-[4px] p-[4px] absolute bottom-[16px] left-[16px] rounded-[8px] bg-[#000000]">
-                <button
-                    onClick={(e) => setIsOrthographic(!isOrthographic)}
-                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
-                        isOrthographic ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
-                    }`}
+            <div className="flex flex-col gap-[4px] p-[4px] absolute bottom-[16px] left-[16px] rounded-[12px] bg-[#000000]">
+                <TooltipAdvanced
+                    text="Perfect View"
+                    position="right"
+                    delay={100}
                 >
-                    <OrthograhicView color="#FFFFFF" size={20} />
-                </button>
+                    <button
+                        onClick={(e) => setIsOrthographic(!isOrthographic)}
+                        className={`hover:bg-[#5D3FD3] text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                            isOrthographic ? 'bg-[#5D3FD3]' : 'bg-[#000000]'
+                        }`}
+                    >
+                        <OrthograhicView color="#FFFFFF" size={20} />
+                    </button>
+                </TooltipAdvanced>
 
-                <button
-                    disabled={isOrthographic}
-                    onClick={(e) => handleViewActions('fov_slider')}
-                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
-                        showFovSlider && !isOrthographic
-                            ? 'bg-[#D3D3D3]/25'
-                            : 'bg-[#000000]'
-                    }`}
-                >
-                    <CameraFovIcon color="#FFFFFF" size={20} />
-                </button>
+                <TooltipAdvanced text="Fov Slider" position="right" delay={100}>
+                    <button
+                        disabled={isOrthographic}
+                        onClick={(e) => handleViewActions('fov_slider')}
+                        className={`hover:bg-[#5D3FD3] text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                            showFovSlider && !isOrthographic
+                                ? 'bg-[#5D3FD3]'
+                                : 'bg-[#000000]'
+                        }`}
+                    >
+                        <CameraFovIcon color="#FFFFFF" size={20} />
+                    </button>
+                </TooltipAdvanced>
 
-                <button
-                    onClick={(e) => handleViewActions('grids')}
-                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
-                        showGridOptions ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
-                    }`}
+                <TooltipAdvanced
+                    text="Enable Grids"
+                    position="right"
+                    delay={100}
                 >
-                    <ShowGrid color="#FFFFFF" size={20} />
-                </button>
+                    <button
+                        onClick={(e) => handleViewActions('grids')}
+                        className={`hover:bg-[#5D3FD3] text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                            showGridOptions ? 'bg-[#5D3FD3]' : 'bg-[#000000]'
+                        }`}
+                    >
+                        <GridIcon color="#FFFFFF" size={20} />
+                    </button>
+                </TooltipAdvanced>
 
-                <button
-                    onClick={(e) => setOrbitalLock(!orbitalLock)}
-                    className={`text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
-                        orbitalLock ? 'bg-[#D3D3D3]/25' : 'bg-[#000000]'
-                    }`}
-                >
-                    <LockIcon color="#FFFFFF" size={20} />
-                </button>
+                <TooltipAdvanced text="Orbit Lock" position="right" delay={100}>
+                    <button
+                        onClick={(e) => setOrbitalLock(!orbitalLock)}
+                        className={`hover:bg-[#5D3FD3] text-[#FFFFFF] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px] ${
+                            orbitalLock ? 'bg-[#5D3FD3]' : 'bg-[#000000]'
+                        }`}
+                    >
+                        <LockIcon color="#FFFFFF" size={20} />
+                    </button>
+                </TooltipAdvanced>
 
-                <button
-                    // disabled={allowUndo}
-                    // onClick={(e) => handleUndoRedo('undo')}
-                    className={`active:scale-85 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
-                >
-                    <UndoIcon color="#FFFFFF" size={20} />
-                </button>
+                <TooltipAdvanced text="Undo" position="right" delay={100}>
+                    <button
+                        // disabled={allowUndo}
+                        // onClick={(e) => handleUndoRedo('undo')}
+                        className={`hover:bg-[#5D3FD3] active:scale-90 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
+                    >
+                        <UndoIcon color="#FFFFFF" size={20} />
+                    </button>
+                </TooltipAdvanced>
 
-                <button
-                    // disabled={allowRedo}
-                    // onClick={(e) => handleUndoRedo('redo')}
-                    className={`active:scale-85 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
-                >
-                    <RedoIcon color="#FFFFFF" size={20} />
-                </button>
+                <TooltipAdvanced text="Redo" position="right" delay={100}>
+                    <button
+                        // disabled={allowRedo}
+                        // onClick={(e) => handleUndoRedo('redo')}
+                        className={`hover:bg-[#5D3FD3] active:scale-90 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
+                    >
+                        <RedoIcon color="#FFFFFF" size={20} />
+                    </button>
+                </TooltipAdvanced>
             </div>
 
             {showFovSlider && !isOrthographic && (
-                <div className="absolute w-[198px] bottom-[164px] left-[72px] z-5 p-[4px] justify-center rounded-[8px] bg-[#000000] ">
+                <div className="absolute w-[198px] bottom-[188px] left-[72px] z-5 p-[4px] justify-center rounded-[8px] bg-[#000000] ">
                     <div className="flex flex-col m-[4px]">
                         <div className="range-container">
                             <div className="range-wrapper">
@@ -181,38 +202,32 @@ const ViewsPanel = () => {
             )}
 
             {showGridOptions && (
-                <div className="absolute bottom-[184px] left-[72px] z-5 gap-[4px] p-[4px] flex justify-center rounded-[8px] bg-[#000000] ">
+                <div className="absolute bottom-[216px] left-[72px] z-5 gap-[4px] p-[4px] flex justify-center rounded-[12px] bg-[#000000]">
                     <button
                         onClick={(e) => setGridPlaneX(!gridPlaneX)}
-                        className={`active:scale-85 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
+                        className={`${
+                            gridPlaneX ? 'bg-[#DE3163]/50' : 'bg-[#000000]'
+                        } active:scale-90 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
                     >
-                        <ShowGrid
-                            // color="#DE3163"
-                            color={gridPlaneX ? '#DE3163' : '#00FF7F'}
-                            size={20}
-                        />
+                        <GridIcon color="#DE3163" size={20} />
                     </button>
 
                     <button
                         onClick={(e) => setGridPlaneY(!gridPlaneY)}
-                        className={`active:scale-85 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
+                        className={`${
+                            gridPlaneY ? 'bg-[#50C878]/50' : 'bg-[#000000]'
+                        } active:scale-90 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
                     >
-                        <ShowGrid
-                            // color="#50C878"
-                            color={gridPlaneY ? '#50C878' : '#00FF7F'}
-                            size={20}
-                        />
+                        <GridIcon color="#50C878" size={20} />
                     </button>
 
                     <button
                         onClick={(e) => setGridPlaneZ(!gridPlaneZ)}
-                        className={`active:scale-85 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
+                        className={`${
+                            gridPlaneZ ? 'bg-[#0096FF]/50' : 'bg-[#000000]'
+                        } active:scale-90 text-[#FFFFFF] font-bold p-[8px] cursor-pointer rounded-[8px] z-5 border-[0px]`}
                     >
-                        <ShowGrid
-                            // color="#0096FF"
-                            color={gridPlaneZ ? '#0096FF' : '#00FF7F'}
-                            size={20}
-                        />
+                        <GridIcon color="#0096FF" size={20} />
                     </button>
                 </div>
             )}
