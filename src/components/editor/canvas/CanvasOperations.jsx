@@ -1,102 +1,79 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
-import { v4 as uuid } from 'uuid'
+import * as THREE from 'three'
 
-import EraseLine from './EraseLine'
 import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
 import { canvasViewStore } from '../../../hooks/useCanvasViewStore'
+import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
 
+import EraseLine from './EraseLine'
+import DrawLine52 from './DrawLine52'
+import TransformLine from './TransformLine'
+import TransfromGuide from './TransformGuide'
+import LoftGuidePlane18 from './LoftGuidePlane18'
 import DynamicGuidePlane from './DynamicGuidePlane'
 import DynamicBendGuidePlane from './DynamicBendGuidePlane'
-import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
-import TransfromGuide from './TransformGuide'
-
-import DrawLine from './DrawLine'
-import TransformLine from './TransformLine'
 
 export default function CanvasOperations({ id }) {
+    const { scene, gl } = useThree()
+
     const {
-        penActive,
         eraseGuide,
         selectLines,
         selectGuide,
         setDrawGuide,
-        eraserActive,
         setEraseGuide,
         bendPlaneGuide,
+        loftGuidePlane,
         setBendPlaneGuide,
         dynamicDrawingPlaneMesh,
         setDynamicDrawingPlaneMesh,
+        setPlane,
+        highlighted,
+        setHighlighted,
+        setLoftGuidePlane,
+        setGenerateLoftSurface,
     } = canvasDrawStore((state) => state)
 
-    const { setActiveScene } = canvasRenderStore((state) => state)
-    // const { session } = dashboardStore((state) => state)
-
-    const { scene, gl } = useThree()
-
-    // camera.layers.disableAll
-    // camera.layers.enable(1)
-
-    // useEffect(() => {
-    //     ;(async () => {
-    //         const data = {
-    //             uuid: uuid(),
-    //             name: 'Group_1',
-    //             note_id: id,
-    //             created_at: new Date().toISOString(),
-    //             deleted_at: null,
-    //             created_by: session.id,
-    //             visible: true,
-    //             active: true,
-    //         }
-
-    //         addNewGroup(data)
-    //         sortGroupsByName()
-    //         drawStore.getState().setActiveGroup(data.uuid)
-    //         let gpD = [...groupData, data]
-
-    //         const response = await saveGroupToIndexDB(gpD, id)
-    //     })()
-    // }, [])
-
-    const { setOrbitalLock } = canvasViewStore((state) => state)
+    const { setActiveScene, groupData } = canvasRenderStore((state) => state)
 
     const handleGuideDrawingFinished = (guideMesh) => {
-        // console.log('Adding Dynamic meshes : ', guideMesh)
         setDrawGuide(false)
         if (bendPlaneGuide) {
             setBendPlaneGuide(false)
             scene.remove(dynamicDrawingPlaneMesh)
         }
-        setOrbitalLock(true)
-        setDynamicDrawingPlaneMesh(guideMesh) // Store the guide mesh
+        if (loftGuidePlane) {
+            setBendPlaneGuide(false)
+            setLoftGuidePlane(false)
+            setGenerateLoftSurface(false)
+            scene.remove(dynamicDrawingPlaneMesh)
+        }
+        setDynamicDrawingPlaneMesh(guideMesh)
+        setPlane(guideMesh)
     }
 
     useEffect(() => {
         setActiveScene(scene)
-        // console.log({ scene })
-        // console.log({ gl })
     }, [])
 
     function ClearGuidePlanes() {
-        // console.log(WebGLRenderer.Info)
-        // console.log(WebGLRenderer)
-
         useEffect(() => {
             const meshes = []
+            const selectedObjects = Array.from(highlighted)
             scene.traverse((child) => {
                 if (
-                    // child.type === 'Mesh' &&
                     child.userData?.type === 'Bend_Guide_Plane' ||
                     child.userData?.type === 'tranfromer' ||
-                    child.userData?.type === 'OG_Guide_Plane'
+                    child.userData?.type === 'OG_Guide_Plane' ||
+                    child.userData?.type === 'Dynamic_Guide_Line' ||
+                    child.userData?.type === 'Loft_Surface'
                 ) {
                     meshes.push(child)
                 }
             })
             meshes.forEach((mesh) => {
                 scene.remove(mesh)
-                // console.log('Mesh: ', mesh)
                 mesh.geometry.dispose()
                 if (Array.isArray(mesh.material)) {
                     mesh.material.forEach((mat) => {
@@ -113,35 +90,62 @@ export default function CanvasOperations({ id }) {
             gl.info.autoReset = false
             gl.info.reset()
             setEraseGuide(false)
-            // console.log('Cleared all custom geometries')
-            // console.log({ scene })
-            // console.log({ gl })
+
+            selectedObjects.forEach((obj) => {
+                let baseColor = new THREE.Color(obj.userData.color)
+                const colors = obj.geometry.attributes.color
+                for (let i = 0; i < colors.count; i++) {
+                    colors.setXYZW(
+                        i,
+                        baseColor.r,
+                        baseColor.g,
+                        baseColor.b,
+                        obj.userData.opacity
+                    )
+                }
+                colors.needsUpdate = true
+            })
+
+            setHighlighted([])
         }, [scene, gl])
         return null
     }
 
+    const groupsByUuid = new Map(
+        Object.values(groupData).map((g) => [g.uuid, g])
+    )
+
+    useEffect(() => {
+        // console.log('Updating visible groups...')
+        scene.traverse((child) => {
+            if (
+                (child.userData?.type === 'Line' ||
+                    child.userData.type === 'Merged_Line') &&
+                child.userData.group_id
+            ) {
+                const group = groupsByUuid.get(child.userData.group_id)
+                child.visible = group.visible
+            }
+        })
+    }, [groupData])
+
     return (
         <>
             <DynamicGuidePlane onDrawingFinished={handleGuideDrawingFinished} />
-
             {bendPlaneGuide && (
                 <DynamicBendGuidePlane
                     onDrawingFinished={handleGuideDrawingFinished}
                 />
             )}
 
-            {/* {penActive && dynamicDrawingPlaneMesh && <DrawLine24 id={id} />} */}
-            {/* {penActive && dynamicDrawingPlaneMesh && <DrawLine26 id={id} />} */}
-            {/* {penActive && dynamicDrawingPlaneMesh && <DrawLine30 id={id} />} */}
-            {penActive && dynamicDrawingPlaneMesh && <DrawLine id={id} />}
+            <LoftGuidePlane18 onDrawingFinished={handleGuideDrawingFinished} />
+
+            <DrawLine52 id={id} />
 
             {eraseGuide && <ClearGuidePlanes />}
-
-            {eraserActive && <EraseLine id={id} />}
-
+            <EraseLine id={id} />
             {selectLines && <TransformLine id={id} />}
-
-            {/* {selectGuide && dynamicDrawingPlaneMesh && <TransfromGuide />} */}
+            {selectGuide && <TransfromGuide />}
         </>
     )
 }

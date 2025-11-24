@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
-import * as THREE from 'three'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import * as THREE from 'three/webgpu' // The WebGPU build
+import { Canvas, useFrame, useThree, extend } from '@react-three/fiber'
 import {
     GizmoHelper,
     GizmoViewport,
@@ -10,6 +10,9 @@ import {
     Stats,
 } from '@react-three/drei'
 import { Perf } from 'r3f-perf'
+
+extend(THREE)
+
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 
 import { canvasViewStore } from '../../hooks/useCanvasViewStore'
@@ -19,12 +22,14 @@ import CanvasOperations from './canvas/CanvasOperations'
 
 const Canvas3d = ({ id }) => {
     const {
+        orbitalLock,
+        dprValue,
+        isOrthographic,
+        setIsOrthographic,
         cameraFov,
         gridPlaneX,
         gridPlaneY,
         gridPlaneZ,
-        orbitalLock,
-        isOrthographic,
     } = canvasViewStore((state) => state)
 
     const {
@@ -43,32 +48,46 @@ const Canvas3d = ({ id }) => {
         const { camera } = useThree()
         const target = new THREE.Vector3(0, 0, 0)
 
-        // Get the direction from the camera to the target (where it's looking)
-        const direction = new THREE.Vector3()
-        direction.subVectors(target, camera.position).normalize()
+        // Current vector from camera to target
+        const camToTarget = new THREE.Vector3()
+        camToTarget.subVectors(camera.position, target)
 
-        // Absolute values to compare which axis the camera is facing most
+        // Current zoom distance (length)
+        const zoomDist = camToTarget.length()
+
+        // Direction vector normalized
+        const direction = camToTarget.clone().normalize()
+
+        // Absolute direction values
         const absDir = {
             x: Math.abs(direction.x),
             y: Math.abs(direction.y),
             z: Math.abs(direction.z),
         }
 
-        // Decide which axis is dominant (and the sign)
+        // Decide dominant axis and sign but keep the zoom distance same
         let snapPosition = new THREE.Vector3()
 
         if (absDir.x > absDir.y && absDir.x > absDir.z) {
-            snapPosition.set(direction.x > 0 ? -40 : 40, 0, 0) // Along X
+            // Snap along X axis
+            snapPosition.set(direction.x > 0 ? 1 : -1, 0, 0)
         } else if (absDir.y > absDir.x && absDir.y > absDir.z) {
-            snapPosition.set(0, direction.y > 0 ? -40 : 40, 0) // Along Y
+            // Snap along Y axis
+            snapPosition.set(0, direction.y > 0 ? 1 : -1, 0)
         } else {
-            snapPosition.set(0, 0, direction.z > 0 ? -40 : 40) // Along Z
+            // Snap along Z axis
+            snapPosition.set(0, 0, direction.z > 0 ? 1 : -1)
         }
 
-        // Move camera and reset controls
-        camera.position.copy(snapPosition)
-        camera.lookAt(target)
+        // Scale snapPosition to the original zoom distance to keep same zoom
+        snapPosition.multiplyScalar(zoomDist)
 
+        // Place camera position relative to target
+        camera.position.copy(target).add(snapPosition)
+
+        // Do NOT change camera rotation: keep current rotation so no lookAt call
+
+        // Update controls target
         if (orbitControlsRef.current) {
             orbitControlsRef.current.target.copy(target)
             orbitControlsRef.current.update()
@@ -121,10 +140,12 @@ const Canvas3d = ({ id }) => {
 
             // Traverse the whole scene
             scene.traverse((child) => {
-                if (child.userData?.type === 'Line') {
-                    child.visible = false
-                    sampleObjects.push(child)
-                }
+                // if (child.userData?.type === 'Line') {
+                child.visible = false
+                // child.castShadow = true
+                // child.receiveShadow = true
+                sampleObjects.push(child)
+                // }
             })
 
             // Sequential visibility with delay
@@ -142,27 +163,44 @@ const Canvas3d = ({ id }) => {
         return null
     }
 
+    const createWebGPURenderer = async (props) => {
+        const renderer = new THREE.WebGPURenderer({
+            ...props,
+            forceWebGL: true,
+        })
+        await renderer.init()
+        return renderer
+    }
+
+    // Hide lines
     return (
         <>
             <Canvas
                 className="cursor-crosshair"
                 style={{ backgroundColor: canvasBackgroundColor }}
                 camera={{ position: [20, 20, 20] }}
-                gl={{ antialias: true }}
-                renderpriority={0}
                 shadows={{ type: THREE.PCFSoftShadowMap, enabled: true }}
                 onDoubleClick={(e) => {
                     setSnaping(true)
                 }}
                 onChange={(e) => camera.updateProjectionMatrix()}
-                // dpr={dprValue}
-                dpr={[1, 2]}
+                dpr={1}
             >
                 <directionalLight
                     color={0xffffff}
-                    intensity={Math.max(lightIntensity, 0)} // instead of conditional rendering
-                    castShadow
-                    position={[200, 200, 0]}
+                    intensity={Math.max(lightIntensity, 0)}
+                    castShadow={true}
+                    position={[150, 150, -150]}
+                    shadow-camera-top={250}
+                    shadow-camera-bottom={-250}
+                    shadow-camera-left={250}
+                    shadow-camera-right={-250}
+                    shadow-bias={-0.01}
+                    shadow-normalBias={0.1}
+                    shadow-camera-near={0.1}
+                    shadow-camera-far={400}
+                    shadow-mapSize-width={1024}
+                    shadow-mapSize-height={1024}
                 />
 
                 {isOrthographic ? (
@@ -176,11 +214,13 @@ const Canvas3d = ({ id }) => {
                 )}
 
                 {snaping && <SnapCameraPositionAndRotation />}
+                <Perf position="bottom-right" />
 
                 {(gridPlaneX || gridPlaneY || gridPlaneZ) && (
                     <group>
                         {gridPlaneX && (
                             <gridHelper
+                                scale={1}
                                 rotation={[0, 0, 0]}
                                 args={[50, 50, `#DE3163`, `#D3D3D3`]}
                             />
@@ -201,19 +241,19 @@ const Canvas3d = ({ id }) => {
                         )}
                     </group>
                 )}
-                <ambientLight intensity={1} color="#FFFFFF" />
+                <ambientLight intensity={10} color="#FFFFFF" />
                 <SmoothFOV />
                 <OrbitControls
                     ref={orbitControlsRef}
                     minDistance={20} // how close user can zoom in
-                    maxDistance={200} // how far user can zoom out
+                    maxDistance={150} // how far user can zoom out
                     enabled={true}
                     enableRotate={!orbitalLock}
                     enablePan={!orbitalLock}
                     enableZoom={true}
                     enableDamping={false}
                     maxZoom={200}
-                    minZoom={20}
+                    minZoom={10}
                 />
                 <CanvasOperations id={id} />
 

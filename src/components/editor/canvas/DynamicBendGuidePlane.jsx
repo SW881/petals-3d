@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react'
+import React, { useRef, useCallback } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -432,7 +432,6 @@ function bendOGGuide(
 }
 
 const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
-    // console.log('In Bend Guide')
     const { camera, scene, gl } = useThree()
     const planeRef = useRef()
 
@@ -446,11 +445,11 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
         strokeStablePercentage,
     } = canvasDrawStore((state) => state)
 
-    const { orbitalLock, setOrbitalLock } = canvasViewStore((state) => state)
+    const { setOrbitalLock } = canvasViewStore((state) => state)
 
     const MAX_POINTS = 50000
-    // const SMOOTH_PERCENTAGE = 25
-    const SMOOTH_PERCENTAGE = strokeStablePercentage
+    const SMOOTH_PERCENTAGE = 75
+    // const SMOOTH_PERCENTAGE = strokeStablePercentage
     const DISTANCE_THRESHOLD = 0.01
     const OPTIMIZATION_THRESHOLD = 0.01 // Threshold for pre-smoothing filtering
     let startPoint = null
@@ -464,27 +463,41 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
 
     const color = new THREE.Color('#F2F2F2')
 
-    // Circle
     const generateCirclePointsWorld = useCallback(
         (center, normal, radius, segments = 64) => {
             const circlePoints = []
             const circleNormals = []
 
-            const tempVector = new THREE.Vector3()
-            const tempQuaternion = new THREE.Quaternion()
+            const globalUp = new THREE.Vector3(0, 1, 0)
+            const globalRight = new THREE.Vector3(1, 0, 0)
 
-            const zAxis = new THREE.Vector3(0, 0, 1)
-            tempQuaternion.setFromUnitVectors(zAxis, normal)
+            let startDirection = new THREE.Vector3()
+
+            if (Math.abs(normal.dot(globalUp)) < 0.99) {
+                startDirection
+                    .copy(globalUp)
+                    .addScaledVector(normal, -globalUp.dot(normal))
+                    .normalize()
+            } else {
+                startDirection
+                    .copy(globalRight)
+                    .addScaledVector(normal, -globalRight.dot(normal))
+                    .normalize()
+            }
+
+            const perpDirection = new THREE.Vector3()
+                .crossVectors(normal, startDirection)
+                .normalize()
 
             for (let i = 0; i <= segments; i++) {
                 const angle = (i / segments) * Math.PI * 2
-                tempVector.set(
-                    radius * Math.cos(angle),
-                    radius * Math.sin(angle),
-                    0
-                )
-                tempVector.applyQuaternion(tempQuaternion).add(center)
-                circlePoints.push(tempVector.clone())
+
+                const point = new THREE.Vector3()
+                    .copy(center)
+                    .addScaledVector(startDirection, radius * Math.cos(angle))
+                    .addScaledVector(perpDirection, radius * Math.sin(angle))
+
+                circlePoints.push(point)
                 circleNormals.push(normal.clone())
             }
 
@@ -496,13 +509,13 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
         []
     )
 
-    // Square
     const generateSquarePointsWorld = useCallback(
         (
             center,
             normal,
             radius,
-            { cornerSegments = 8, segments = 64 } = {}
+            cornerRoundness = 2, // 0 = sharp corners, 10 = very rounded
+            { cornerSegments = 64, segments = 64 } = {}
         ) => {
             const squarePoints = []
             const squareNormals = []
@@ -510,60 +523,86 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
             const tempVector = new THREE.Vector3()
             const tempQuaternion = new THREE.Quaternion()
 
-            // Align local XY plane with the normal
             const zAxis = new THREE.Vector3(0, 0, 1)
             tempQuaternion.setFromUnitVectors(zAxis, normal)
 
-            // Square side length from radius (radius = half diagonal)
-            const sideLength = radius * Math.sqrt(2) // so diagonal = 2*radius
+            const sideLength = radius * Math.sqrt(2)
             const halfSide = sideLength / 2
 
-            // Corner radius for smooth rounding (adjust cornerRadiusFactor for more/less rounding)
-            const cornerRadiusFactor = 0.15 // 15% of side length
+            // If cornerRoundness is 0, create ONLY 4 corner points (sharp edges)
+            if (cornerRoundness === 0) {
+                const sharpCorners = [
+                    { x: halfSide, y: halfSide }, // Top-right
+                    { x: -halfSide, y: halfSide }, // Top-left
+                    { x: -halfSide, y: -halfSide }, // Bottom-left
+                    { x: halfSide, y: -halfSide }, // Bottom-right
+                ]
+
+                // Generate ONLY the 4 corner points
+                sharpCorners.forEach((corner) => {
+                    tempVector.set(corner.x, corner.y, 0)
+                    tempVector.applyQuaternion(tempQuaternion).add(center)
+                    squarePoints.push(tempVector.clone())
+                    squareNormals.push(normal.clone())
+                })
+
+                // Close the loop by duplicating the first point
+                squarePoints.push(squarePoints[0].clone())
+                squareNormals.push(normal.clone())
+
+                return {
+                    squarePoints: squarePoints, // 5 points total (4 corners + 1 closing)
+                    squareNormals: squareNormals,
+                }
+            }
+
+            // Rounded corners (cornerRoundness > 0)
+            const cornerRadiusFactor = (cornerRoundness / 10) * 0.3
             const cornerRadius = sideLength * cornerRadiusFactor
             const straightLength = halfSide - cornerRadius
 
-            // Four corners positions (in local space before rotation)
             const corners = [
                 {
                     x: straightLength,
                     y: straightLength,
                     startAngle: 0,
                     endAngle: Math.PI / 2,
-                }, // top-right
+                },
                 {
                     x: -straightLength,
                     y: straightLength,
                     startAngle: Math.PI / 2,
                     endAngle: Math.PI,
-                }, // top-left
+                },
                 {
                     x: -straightLength,
                     y: -straightLength,
                     startAngle: Math.PI,
                     endAngle: Math.PI * 1.5,
-                }, // bottom-left
+                },
                 {
                     x: straightLength,
                     y: -straightLength,
                     startAngle: Math.PI * 1.5,
                     endAngle: Math.PI * 2,
-                }, // bottom-right
+                },
             ]
 
             const pointsPerSide = Math.floor(segments / 4)
             const pointsPerCorner = cornerSegments
 
-            // Generate square with rounded corners
-            corners.forEach((corner, idx) => {
+            // Generate points for each corner and edge
+            for (let idx = 0; idx < 4; idx++) {
+                const corner = corners[idx]
                 const nextCorner = corners[(idx + 1) % 4]
 
-                // Rounded corner arc
+                // Generate corner arc points
                 for (let i = 0; i < pointsPerCorner; i++) {
                     const t = i / pointsPerCorner
                     const angle =
                         corner.startAngle +
                         t * (corner.endAngle - corner.startAngle)
+
                     tempVector.set(
                         corner.x + cornerRadius * Math.cos(angle),
                         corner.y + cornerRadius * Math.sin(angle),
@@ -574,7 +613,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
                     squareNormals.push(normal.clone())
                 }
 
-                // Straight edge to next corner
+                // Calculate edge start and end positions
                 const edgeStart = {
                     x: corner.x + cornerRadius * Math.cos(corner.endAngle),
                     y: corner.y + cornerRadius * Math.sin(corner.endAngle),
@@ -588,8 +627,10 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
                         cornerRadius * Math.sin(nextCorner.startAngle),
                 }
 
-                for (let i = 1; i < pointsPerSide; i++) {
+                // Generate straight edge points
+                for (let i = 1; i <= pointsPerSide; i++) {
                     const t = i / pointsPerSide
+
                     tempVector.set(
                         edgeStart.x + t * (edgeEnd.x - edgeStart.x),
                         edgeStart.y + t * (edgeEnd.y - edgeStart.y),
@@ -599,76 +640,15 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
                     squarePoints.push(tempVector.clone())
                     squareNormals.push(normal.clone())
                 }
-            })
+            }
 
             // Close the loop
             squarePoints.push(squarePoints[0].clone())
             squareNormals.push(normal.clone())
 
-            // return {
-            //     squarePoints,
-            //     squareNormals,
-            // }
             return {
                 squarePoints: squarePoints,
                 squareNormals: squareNormals,
-            }
-        },
-        []
-    )
-
-    // Semi Circle close arc
-    const generateSemiCirclePointsWorld = useCallback(
-        (center, normal, radius, segments = 64) => {
-            const semiCirclePoints = []
-            const semiCircleNormals = []
-
-            const tempVector = new THREE.Vector3()
-            const tempQuaternion = new THREE.Quaternion()
-
-            // Align local XY plane with the normal
-            const zAxis = new THREE.Vector3(0, 0, 1)
-            tempQuaternion.setFromUnitVectors(zAxis, normal)
-
-            // Semi-circle arc (top half, 180 degrees)
-            const arcSegments = Math.floor(segments * 0.6) // 60% for the arc
-            for (let i = 0; i <= arcSegments; i++) {
-                const angle = Math.PI + (i / arcSegments) * Math.PI // from 180° to 360° (top half)
-                tempVector.set(
-                    radius * Math.cos(angle),
-                    radius * Math.sin(angle),
-                    0
-                )
-                tempVector.applyQuaternion(tempQuaternion).add(center)
-                semiCirclePoints.push(tempVector.clone())
-                semiCircleNormals.push(normal.clone())
-            }
-
-            // Straight base line (bottom, closing the semi-circle)
-            const baseSegments = Math.floor(segments * 0.4) // 40% for the base
-            for (let i = 1; i < baseSegments; i++) {
-                const t = i / baseSegments
-                tempVector.set(
-                    radius - t * (2 * radius), // from right (-radius) to left (+radius)
-                    0,
-                    0
-                )
-                tempVector.applyQuaternion(tempQuaternion).add(center)
-                semiCirclePoints.push(tempVector.clone())
-                semiCircleNormals.push(normal.clone())
-            }
-
-            // Close the loop
-            semiCirclePoints.push(semiCirclePoints[0].clone())
-            semiCircleNormals.push(normal.clone())
-
-            // return {
-            //     semiCirclePoints,
-            //     semiCircleNormals,
-            // }
-            return {
-                circlePoints: semiCirclePoints,
-                circleNormals: semiCircleNormals,
             }
         },
         []
@@ -830,7 +810,8 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
         geometry.setDrawRange(0, 0)
 
         const material = new THREE.MeshBasicMaterial({
-            color: color,
+            color: new THREE.Color(color),
+            wireframe: false,
             transparent: true,
             opacity: 1,
             side: THREE.DoubleSide,
@@ -840,6 +821,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
         })
 
         const mesh = new THREE.Mesh(geometry, material)
+        mesh.userData.type = 'Dynamic_Guide_Line'
         scene.add(mesh)
         return mesh
     }
@@ -1162,7 +1144,6 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
             }
 
             // Generate Bend Guide
-            console.log('Bending original guide free_hand || straight')
             const wrappedRibbon = bendOGGuide(
                 ogGuidePoints, // Vector3[] cross-section
                 points, // Vector3[] path

@@ -1,25 +1,29 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { TransformControls } from '@react-three/drei'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { TransformControls } from 'three/addons/controls/TransformControls.js'
 
 import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
 import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
 
-const TransformLine = ({ eraseFilter = () => true }) => {
-    const { camera, mouse, raycaster, scene, gl } = useThree()
+const TransformLine = ({ id }) => {
+    const { camera, mouse, raycaster, scene, gl, invalidate } = useThree()
     const {
         copy,
         setCopy,
         axisMode,
         lineColor,
         strokeColor,
+        selectLines,
+        strokeOpacity,
         transformMode,
+        setSelectLines,
         mergeGeometries,
         setMergeGeometries,
+        activeMaterialType,
     } = canvasDrawStore((state) => state)
-    const { setActiveScene } = canvasRenderStore((state) => state)
+    const { activeGroup, setActiveScene } = canvasRenderStore((state) => state)
 
     const transformRef = useRef()
     const dummyTarget = useRef(new THREE.Group())
@@ -58,56 +62,192 @@ const TransformLine = ({ eraseFilter = () => true }) => {
         object.scale.copy(tempScale)
     }
 
+    // Initialize TransformControls once
     useEffect(() => {
+        const controls = new TransformControls(camera, gl.domElement)
+        controls.setSpace(axisMode)
+        controls.setMode(transformMode)
+        transformRef.current = controls
+
+        // CUSTOMIZE COLORS
+        controls.setColors({
+            x: '#ff0000', // Red for X axis
+            y: '#00ff00', // Green for Y axis
+            z: '#0000ff', // Blue for Z axis
+            active: '#FF5F1F', // Yellow when dragging
+        })
+
+        // HIDE PLANES AND EXTRA ELEMENTS TO REDUCE DRAW CALLS
+        // Hide the XY, YZ, XZ plane helpers
+        controls.showX = true // Keep X arrow
+        controls.showY = true // Keep Y arrow
+        controls.showZ = true // Keep Z arrow
+
+        // Access the gizmo helper and hide specific elements
+        const helper = controls._gizmo.gizmo.translate.children
+
+        helper.forEach((child) => {
+            if (
+                child.name == 'XY' ||
+                child.name == 'XZ' ||
+                child.name == 'YZ' ||
+                child.name == 'XYZ' ||
+                (child.geometry.type === 'CylinderGeometry' &&
+                    child.geometry?.paramters?.radiusTop === 0.0075)
+            ) {
+                child.scale.set(0, 0, 0)
+                child.material.visible = false
+                child.visible = false
+                child.updateMatrixWorld(true)
+            }
+        })
+
+        // Add event listeners
+        const onDragStart = () => {
+            isTransformDragging.current = true
+        }
+
+        const onDragEnd = () => {
+            isTransformDragging.current = false
+            updateLineWorldPoints3()
+        }
+
+        const onDraggingChanged = (e) => {
+            isTransformDragging.current = e.value
+        }
+
+        controls.addEventListener('mouseDown', onDragStart)
+        controls.addEventListener('mouseUp', onDragEnd)
+        controls.addEventListener('dragging-changed', onDraggingChanged)
+
+        // Cleanup
         return () => {
+            controls.removeEventListener('mouseDown', onDragStart)
+            controls.removeEventListener('mouseUp', onDragEnd)
+            controls.removeEventListener('dragging-changed', onDraggingChanged)
+
+            const helper = controls.getHelper()
+            if (scene.children.includes(helper)) {
+                scene.remove(helper)
+            }
+            controls.detach()
+            controls.dispose()
+
             const dummy = dummyTarget.current
             if (!dummy) return
 
             const childrenToRestore = [...dummy.children]
             childrenToRestore.forEach((child) => {
                 if (!scene.children.includes(child)) {
-                    child.updateMatrixWorld()
+                    child.updateMatrixWorld(true)
                     child.applyMatrix4(dummy.matrixWorld)
+                    dummy.remove(child)
                     scene.add(child)
                 }
-                dummy.remove(child)
             })
 
             if (scene.children.includes(dummy)) {
                 scene.remove(dummy)
             }
 
-            // console.log({ scene })
             highlighted.current.clear()
             gl.info.autoReset = false
             gl.info.reset()
-            setAttachedGizmos(false)
-            resetDummyTarget()
         }
-    }, [scene])
+    }, [camera, gl, scene])
+
+    // Update visibility when mode changes
+    useEffect(() => {
+        if (transformRef.current) {
+            transformRef.current.setMode(transformMode)
+
+            // Re-hide planes after mode change
+            const helper = transformRef.current.getHelper()
+            const gizmoIndex =
+                transformMode === 'translate'
+                    ? 0
+                    : transformMode === 'rotate'
+                    ? 1
+                    : 2
+
+            if (helper.children[gizmoIndex]) {
+                const gizmo = helper.children[gizmoIndex]
+                gizmo.children.forEach((child) => {
+                    if (
+                        child.name &&
+                        (child.name.includes('XY') ||
+                            child.name.includes('YZ') ||
+                            child.name.includes('XZ') ||
+                            child.name.includes('XYZ') ||
+                            child.name.includes('E'))
+                    ) {
+                        child.scale.set(0, 0, 0)
+                        child.material.visible = false
+                        child.visible = false
+                        child.updateMatrixWorld(true)
+                    }
+                })
+            }
+        }
+    }, [transformMode])
+
+    // Attach/detach controls based on attachedGizmos state
+    useEffect(() => {
+        const controls = transformRef.current
+        if (!controls) return
+
+        if (attachedGizmos && dummyTarget.current) {
+            controls.attach(dummyTarget.current)
+            // Use getHelper() instead of adding controls directly
+            const helper = controls.getHelper()
+            if (!scene.children.includes(helper)) {
+                scene.add(helper)
+            }
+        } else {
+            controls.detach()
+            const helper = controls.getHelper()
+            if (scene.children.includes(helper)) {
+                scene.remove(helper)
+            }
+        }
+    }, [attachedGizmos, scene])
+
+    // Update transform mode and space when they change
+    useEffect(() => {
+        if (transformRef.current) {
+            transformRef.current.setMode(transformMode)
+        }
+    }, [transformMode])
+
+    useEffect(() => {
+        if (transformRef.current) {
+            transformRef.current.setSpace(axisMode)
+        }
+    }, [axisMode])
 
     const resetDummyTarget = () => {
         const dummy = dummyTarget.current
-
         if (dummy) {
             dummy.children.forEach((child) => {
                 if (child.isMesh) {
-                    if (child.geometry) child.geometry.dispose()
+                    if (child.geometry) {
+                        child.geometry.dispose()
+                    }
                     if (child.material) {
                         const materials = Array.isArray(child.material)
                             ? child.material
                             : [child.material]
-                        materials.forEach((mat) => mat.dispose?.())
+                        materials.forEach((mat) => {
+                            mat.dispose?.()
+                        })
                     }
                 }
                 dummy.remove(child)
             })
-
             if (scene.children.includes(dummy)) {
                 scene.remove(dummy)
             }
         }
-
         dummyTarget.current = new THREE.Group()
     }
 
@@ -131,7 +271,6 @@ const TransformLine = ({ eraseFilter = () => true }) => {
             !isTransformDragging.current &&
             !attachedGizmos
         ) {
-            resetHighlight()
             setDraggingSelection(true)
         }
     }
@@ -150,7 +289,7 @@ const TransformLine = ({ eraseFilter = () => true }) => {
 
         const selectedObjects = Array.from(highlighted.current)
         if (selectedObjects.length === 0) return
-        // console.log({ selectedObjects })
+
         const center = computeCenter(selectedObjects)
         selectedCenter.current.copy(center)
         dummyTarget.current.position.copy(center)
@@ -162,22 +301,22 @@ const TransformLine = ({ eraseFilter = () => true }) => {
         selectedObjects.forEach((obj) => {
             toLocalSpace(obj, dummyTarget.current)
             dummyTarget.current.add(obj)
-            if (obj.material) {
-                obj.material.transparent = true
-                obj.material.opacity = 1
+            let baseColor = new THREE.Color(obj.userData.color)
+            const colors = obj.geometry.attributes.color
+            for (let i = 0; i < colors.count; i++) {
+                colors.setXYZW(
+                    i,
+                    baseColor.r,
+                    baseColor.g,
+                    baseColor.b,
+                    obj.userData.opacity
+                )
             }
+            colors.needsUpdate = true
         })
 
+        invalidate() // Add this
         setAttachedGizmos(true)
-    }
-
-    const resetHighlight = () => {
-        highlighted.current.forEach((obj) => {
-            if (obj.material?.transparent !== undefined) {
-                obj.material.opacity = 1
-            }
-        })
-        highlighted.current.clear()
     }
 
     useEffect(() => {
@@ -195,39 +334,75 @@ const TransformLine = ({ eraseFilter = () => true }) => {
         raycaster.setFromCamera(mouse, camera)
         const objectsToTest = scene.children.filter(
             (obj) =>
-                obj.isMesh && obj.userData?.type === 'Line' && eraseFilter(obj)
+                obj.isMesh &&
+                obj.userData?.group_id === activeGroup &&
+                (obj.userData?.type === 'Line' ||
+                    obj.userData?.type === 'Merged_Line' ||
+                    obj.userData?.type === 'Loft_Surface' ||
+                    obj.userData?.type === 'Bend_Guide_Plane' ||
+                    obj.userData?.type === 'OG_Guide_Plane')
         )
 
         const intersects = raycaster.intersectObjects(objectsToTest, true)
-        // console.log({ intersects })
+        let hasNewHighlight = false
+
         intersects.forEach(({ object }) => {
-            if (
-                // intersects.length > 0 &&
-                // intersects[0]?.object &&
-                !highlighted.current.has(object)
-            ) {
+            if (!highlighted.current.has(object)) {
                 highlighted.current.add(object)
-                if (object.material) {
-                    object.material.transparent = true
-                    object.material.opacity = 0.5
+                hasNewHighlight = true
+
+                const colors = object.geometry.attributes.color
+                const greenColor = new THREE.Color('#00FF00')
+                for (let i = 0; i < colors.count; i++) {
+                    colors.setXYZW(
+                        i,
+                        greenColor.r,
+                        greenColor.g,
+                        greenColor.b,
+                        0.5
+                    )
                 }
+                colors.needsUpdate = true
             }
         })
+
+        if (hasNewHighlight) {
+            invalidate()
+        }
     })
 
     useEffect(() => {
         if (dummyTarget.current?.children.length > 0) {
+            const newColor = new THREE.Color(lineColor) // white
+
             dummyTarget.current.children.forEach((obj) => {
                 if (
                     obj.isMesh &&
+                    obj.userData?.group_id === activeGroup &&
                     (obj.userData?.type === 'Line' ||
-                        obj.userData?.type === 'Linked_Line')
+                        obj.userData?.type === 'Merged_Line' ||
+                        obj.userData?.type === 'Loft_Surface')
                 ) {
-                    obj.material.color.set(lineColor)
+                    // Update userData.color to the new color
+                    obj.userData.color = lineColor
+
+                    const colors = obj.geometry.attributes.color
+                    for (let i = 0; i < colors.count; i++) {
+                        colors.setXYZW(
+                            i,
+                            newColor.r,
+                            newColor.g,
+                            newColor.b,
+                            obj.userData.opacity
+                        )
+                    }
+                    colors.needsUpdate = true
                 }
             })
+
+            invalidate()
         }
-    }, [lineColor])
+    }, [lineColor, invalidate])
 
     useEffect(() => {
         if (dummyTarget.current && copy && !isCopying.current) {
@@ -237,9 +412,7 @@ const TransformLine = ({ eraseFilter = () => true }) => {
             const originalObjects = [...dummyTarget.current.children].map(
                 (child) => {
                     child.updateMatrixWorld(true)
-
                     child.applyMatrix4(dummyTarget.current.matrixWorld)
-
                     dummyTarget.current.remove(child)
                     scene.add(child)
                     return child
@@ -254,6 +427,9 @@ const TransformLine = ({ eraseFilter = () => true }) => {
 
             const clones = originalObjects.map((original) => {
                 const clone = original.clone()
+
+                // Deep clone geometry so vertex colors can be updated independently
+                clone.geometry = original.geometry.clone()
 
                 if (Array.isArray(original.material)) {
                     clone.material = original.material.map((mat) => {
@@ -292,8 +468,6 @@ const TransformLine = ({ eraseFilter = () => true }) => {
             clones.forEach((clone) => {
                 toLocalSpace(clone, dummyTarget.current)
                 dummyTarget.current.add(clone)
-                clone.material.transparent = true
-                clone.material.opacity = 1
             })
 
             setAttachedGizmos(true)
@@ -301,7 +475,7 @@ const TransformLine = ({ eraseFilter = () => true }) => {
             isCopying.current = false
             setActiveScene(scene)
         }
-    }, [copy])
+    }, [copy, scene, setAttachedGizmos, setCopy, setActiveScene])
 
     useEffect(() => {
         if (dummyTarget.current && mergeGeometries && !isMerging.current) {
@@ -317,7 +491,6 @@ const TransformLine = ({ eraseFilter = () => true }) => {
             }
 
             const initialScale = objectsToMerge[0].scale.x
-            // const initialGroupId = drawStore.getState().activeGroup
 
             let lines = []
             let geometries = []
@@ -327,7 +500,10 @@ const TransformLine = ({ eraseFilter = () => true }) => {
                 mesh.updateMatrixWorld(true)
 
                 const objData = mesh.userData
-                if (objData.type === 'Line') {
+                if (
+                    objData.type === 'Line' &&
+                    objData.group_id === activeGroup
+                ) {
                     lines = [...lines, objData]
                     objData.merged = true
                 }
@@ -361,77 +537,104 @@ const TransformLine = ({ eraseFilter = () => true }) => {
                 geometries,
                 false
             )
-            const pos = mergedGeometry.attributes.position
-            const count = pos.count
-            const finalNormals = new Float32Array(count * 3)
 
-            for (let i = 0; i < count; i += 3) {
-                const vIdx0 = i
-                const vIdx1 = i + 1
-                const vIdx2 = i + 2
+            if (!mergedGeometry.attributes.color) {
+                const count = mergedGeometry.attributes.position.count
+                const colors = new Float32Array(count * 4) // RGBA
 
-                const vA = new THREE.Vector3().fromArray(pos.array, vIdx0 * 3)
-                const vB = new THREE.Vector3().fromArray(pos.array, vIdx1 * 3)
-                const vC = new THREE.Vector3().fromArray(pos.array, vIdx2 * 3)
-
-                const cb = new THREE.Vector3().subVectors(vC, vB)
-                const ab = new THREE.Vector3().subVectors(vA, vB)
-                const normal = new THREE.Vector3()
-                    .crossVectors(cb, ab)
-                    .normalize()
-
-                for (let j = 0; j < 3; j++) {
-                    const n_idx = (i + j) * 3
-                    finalNormals[n_idx] = normal.x
-                    finalNormals[n_idx + 1] = normal.y
-                    finalNormals[n_idx + 2] = normal.z
+                const strokeColorObj = new THREE.Color(strokeColor)
+                for (let i = 0; i < count; i++) {
+                    colors[i * 4 + 0] = strokeColorObj.r
+                    colors[i * 4 + 1] = strokeColorObj.g
+                    colors[i * 4 + 2] = strokeColorObj.b
+                    colors[i * 4 + 3] = strokeOpacity ?? 1.0
                 }
+
+                mergedGeometry.setAttribute(
+                    'color',
+                    new THREE.BufferAttribute(colors, 4)
+                )
             }
 
-            mergedGeometry.setAttribute(
-                'normal',
-                new THREE.Float32BufferAttribute(finalNormals, 3)
-            )
+            let material
+            switch (activeMaterialType) {
+                case 'flat':
+                    material = new THREE.MeshBasicMaterial({
+                        vertexColors: true,
+                        wireframe: false,
+                        transparent: strokeOpacity < 1,
+                        side: THREE.DoubleSide,
+                        forceSinglePass: true,
+                        depthTest: true,
+                        depthWrite: strokeOpacity >= 1,
+                        blending: THREE.NormalBlending,
+                    })
+                    break
 
-            mergedGeometry.attributes.normal.needsUpdate = true
-            mergedGeometry.toNonIndexed()
-            mergedGeometry.computeVertexNormals()
-            mergedGeometry.computeBoundingBox()
-            mergedGeometry.computeBoundingSphere()
+                case 'shaded':
+                    material = new THREE.MeshStandardMaterial({
+                        vertexColors: true,
+                        wireframe: false,
+                        transparent: strokeOpacity < 1,
+                        side: THREE.DoubleSide,
+                        forceSinglePass: true,
+                        depthTest: true,
+                        depthWrite: true,
+                        blending: THREE.NoBlending,
+                    })
+                    break
 
-            const material = new THREE.MeshStandardMaterial({
-                color: new THREE.Color(strokeColor),
-                wireframe: false,
-                transparent: true,
+                case 'glow':
+                    material = new THREE.MeshStandardMaterial({
+                        vertexColors: true,
+                        wireframe: false,
+                        transparent: false,
+                        side: THREE.DoubleSide,
+                        forceSinglePass: true,
+                        depthTest: true,
+                        depthWrite: true,
+                        blending: THREE.NoBlending,
+                        emissive: new THREE.Color(strokeColor),
+                        emissiveIntensity: 1,
+                    })
+                    break
+
+                default:
+                    break
+            }
+
+            const combinedMesh = new THREE.Mesh(mergedGeometry, material)
+            combinedMesh.geometry.toNonIndexed()
+            combinedMesh.geometry.computeVertexNormals()
+            combinedMesh.geometry.computeBoundingBox()
+            combinedMesh.geometry.computeBoundingSphere()
+
+            combinedMesh.userData = {
+                type: 'Merged_Line',
+                note_id: id,
+                is_mirror: false,
+                mirror_mode: 'NA',
+                color: strokeColor,
                 opacity: strokeOpacity,
-                side: THREE.DoubleSide,
-                forceSinglePass: true,
-                depthTest: false,
-                depthWrite: false,
-            })
-
-            const mergedMesh = new THREE.Mesh(mergedGeometry, material)
-            scene.add(mergedMesh)
-
-            if (mergedMesh.material) {
-                mergedMesh.material.flatShading = true
-                mergedMesh.material.needsUpdate = true
+                uuid: combinedMesh.uuid,
+                group_id: activeGroup,
+                position: { x: 0, y: 0, z: 0 },
+                rotation: { x: 0, y: 0, z: 0, w: 1 },
+                scale: { x: 1, y: 1, z: 1 },
             }
 
-            mergedMesh.userData = {
-                lines,
-                type: 'Line',
-                uuid: mergedMesh.uuid,
-                scale: initialScale,
-                position: new THREE.Vector3(0, 0, 0),
-                rotation: new THREE.Euler(0, 0, 0),
-                // group_id: initialGroupId,
-            }
+            // 2) Add merged mesh to scene (already in world space)
+            scene.add(combinedMesh)
 
+            // 3) Clear dummy and detach gizmos
             resetDummyTarget()
+            setAttachedGizmos(false)
+
+            // 4) Clear merging flags
             setMergeGeometries(false)
             isMerging.current = false
             setActiveScene(scene)
+            setSelectLines(!selectLines)
         }
     }, [
         mergeGeometries,
@@ -441,51 +644,30 @@ const TransformLine = ({ eraseFilter = () => true }) => {
         resetDummyTarget,
     ])
 
-    useEffect(() => {
-        const controls = transformRef.current
-        if (!controls) return
+    const updateLineWorldPoints3 = () => {
+        dummyTarget.current.children.forEach((lineObj) => {
+            if (lineObj.type === 'Mesh' && lineObj.userData.type === 'Line') {
+                lineObj.updateMatrixWorld(true)
 
-        const onDragStart = () => (isTransformDragging.current = true)
-        const onDragEnd = () => (isTransformDragging.current = false)
-        const onDraggingChanged = (e) => {
-            isTransformDragging.current = e.value
-        }
+                const localPoints = lineObj.userData.loft_points
 
-        controls.addEventListener('mouseDown', onDragStart)
-        controls.addEventListener('mouseUp', onDragEnd)
-        controls.addEventListener('dragging-changed', onDraggingChanged)
+                if (!localPoints || localPoints.length === 0) {
+                    console.warn('No loft_points found on line object')
+                    return
+                }
 
-        return () => {
-            controls.removeEventListener('mouseDown', onDragStart)
-            controls.removeEventListener('mouseUp', onDragEnd)
-            controls.removeEventListener('dragging-changed', onDraggingChanged)
+                // Transform local points to world space
+                const worldPoints = localPoints.map((localPt) => {
+                    return localPt.clone().applyMatrix4(lineObj.matrixWorld)
+                })
 
-            gl.info.autoReset = false
-            gl.info.reset()
-        }
-    }, [])
+                // Update the world-space loft points
+                lineObj.userData.loft_points = worldPoints
+            }
+        })
+    }
 
-    return (
-        <>
-            {attachedGizmos && (
-                <TransformControls
-                    ref={transformRef}
-                    object={dummyTarget.current}
-                    axisColors={['#ff0000', '#00ff00', '#0000ff']}
-                    activeColor="purple"
-                    mode={transformMode}
-                    space={axisMode}
-                    onMouseDown={() => {
-                        isTransformDragging.current = true
-                    }}
-                    onMouseUp={() => {
-                        isTransformDragging.current = false
-                    }}
-                    userData={{ type: 'tranfromer' }}
-                />
-            )}
-        </>
-    )
+    return null
 }
 
 export default TransformLine

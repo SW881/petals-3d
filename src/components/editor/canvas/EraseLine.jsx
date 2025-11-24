@@ -1,13 +1,17 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 
+import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
+import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
+
 const EraseLine = ({ id }) => {
-    // const { camera, scene, gl } = useThree()
+    const { eraserActive } = canvasDrawStore((state) => state)
 
     function EraserTool({ eraseFilter = () => true }) {
         const { camera, mouse, raycaster, scene } = useThree()
         const [dragging, setDragging] = useState(false)
         const highlighted = useRef(new Set())
+        const { activeGroup } = canvasRenderStore((state) => state)
 
         const resetHighlight = () => {
             highlighted.current.forEach((obj) => {
@@ -27,7 +31,6 @@ const EraseLine = ({ id }) => {
             const onPointerUp = () => {
                 setDragging(false)
 
-                // console.log('Deleteing Objects...')
                 highlighted.current.forEach((obj) => {
                     if (obj.parent) {
                         obj.parent.remove(obj)
@@ -37,6 +40,7 @@ const EraseLine = ({ id }) => {
                 })
 
                 highlighted.current.clear()
+                // Save line to db
             }
 
             window.addEventListener('pointerdown', onPointerDown)
@@ -56,30 +60,39 @@ const EraseLine = ({ id }) => {
             const objectsToCheck = scene.children.filter(
                 (obj) =>
                     obj.isMesh &&
-                    obj.userData?.type === 'Line' &&
+                    (obj.userData?.type === 'Line' ||
+                        obj.userData?.type === 'Merged_Line') &&
+                    obj.userData?.group_id === activeGroup &&
                     eraseFilter(obj)
             )
 
             const intersects = raycaster.intersectObjects(objectsToCheck, true)
 
             intersects.forEach(({ object }) => {
-                if (!highlighted.current.has(object)) {
-                    highlighted.current.add(object)
-                    if (object.material) {
-                        object.material.transparent = true
-                        object.material.opacity = 0.5
+                if (
+                    intersects.length > 0 &&
+                    intersects[0]?.object &&
+                    !highlighted.current.has(intersects[0].object)
+                ) {
+                    const obj = intersects[0].object
+                    highlighted.current.add(obj)
+
+                    // Set material transparent with opacity 0.5
+                    if (obj.material) {
+                        obj.material.transparent = true // enable transparency
+                        obj.material.opacity = 0.5 // reduce opacity
+                        obj.material.needsUpdate = true // update material
                     }
+
+                    // Do NOT modify vertex colors, so they remain as is
                 }
             })
         })
+
         return null
     }
 
-    return (
-        <>
-            <EraserTool />
-        </>
-    )
+    return <>{eraserActive && <EraserTool />}</>
 }
 
 export default EraseLine

@@ -1,36 +1,32 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import axios from 'axios'
-import { v4 as uuid } from 'uuid'
-
 import * as THREE from 'three'
+import { v4 as uuid } from 'uuid'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
+
+import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
+import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
+import { dashboardStore } from '../../hooks/useDashboardStore'
 
 import ViewsPanel from './ViewsPanel'
 import Canvas3d from './Canvas3d'
 import ToolPanel from './ToolPanel'
 
-import BackIcon from '../svg-icons/BackIcon'
 import SaveIcon from '../svg-icons/SaveIcon'
 import CloudIcon from '../svg-icons/CloudIcon'
-
-import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
-import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
+import SignOut from '../svg-icons/SignOut'
 
 import {
     loadSceneFromIndexedDB,
     saveGroupToIndexDB,
 } from '../../helpers/sceneFunction'
 import { ADD_NOTE_DATA, FETECH_NOTE_BY_ID } from '../../services/api'
-import { dashboardStore } from '../../hooks/useDashboardStore'
-import SignOut from '../svg-icons/SignOut'
 import { UserAuth } from '../../context/AuthContext'
 
 const Editor = () => {
     const { id = 1 } = useParams()
     const { signOut } = UserAuth()
-
-    // console.log('Note editor id : ', id)
     const [error, setError] = useState(false)
     const [loading, setLoading] = useState(false)
 
@@ -39,15 +35,8 @@ const Editor = () => {
     const hasRun = useRef(false)
 
     const { setNotesData } = canvasDrawStore((state) => state)
-    const {
-        sortGroupsByName,
-        addNewGroup,
-        activeScene,
-        groupData,
-        setGroupData,
-        activeGroup,
-        setActiveGroup,
-    } = canvasRenderStore((state) => state)
+    const { addNewGroup, activeScene, setGroupData, setActiveGroup } =
+        canvasRenderStore((state) => state)
 
     useEffect(() => {
         if (hasRun.current) return
@@ -65,22 +54,20 @@ const Editor = () => {
 
             if (groupData && groupData.length > 0) {
                 setGroupData(groupData)
-                setActiveGroup(groupData[0].uuid)
+                const activeGroup = groupData.find((g) => g.active)
+                setActiveGroup(activeGroup.uuid)
             } else {
-                console.log('Inside create group data...')
+                // console.log('Inside create group data...')
                 const data = {
                     uuid: uuid(),
                     name: 'G1',
-                    note_id: 1,
+                    note_id: id,
                     created_at: new Date().toISOString(),
                     deleted_at: null,
                     created_by: session.id,
                     visible: true,
                     active: true,
                 }
-
-                console.log({ groupData })
-                console.log({ data })
                 addNewGroup(data)
                 setActiveGroup(data.uuid)
 
@@ -90,8 +77,10 @@ const Editor = () => {
                 )
 
                 setGroupData(canvasRenderStore.getState().groupData)
-                console.log({ response })
-                console.log({ activeGroup })
+            }
+
+            if (lineData && lineData.length > 0) {
+                // Generate and add lines
             }
         } catch (error) {
             setError(error.message)
@@ -110,8 +99,8 @@ const Editor = () => {
 
                 if ('storage' in navigator && 'estimate' in navigator.storage) {
                     navigator.storage.estimate().then(({ usage, quota }) => {
-                        console.log(`Used: ${usage / 1024 / 1024} MB`)
-                        console.log(`Quota: ${quota / 1024 / 1024} MB`)
+                        // console.log(`Used: ${usage / 1024 / 1024} MB`)
+                        // console.log(`Quota: ${quota / 1024 / 1024} MB`)
                     })
                 }
 
@@ -128,10 +117,10 @@ const Editor = () => {
                 })
 
                 if (response) {
-                    console.log('Response : ', response)
+                    // console.log('Response : ', response)
                 }
             } else {
-                console.log('No Groups or Lines to store')
+                // console.log('No Groups or Lines to store')
             }
         } catch (error) {
             console.error(error)
@@ -141,39 +130,30 @@ const Editor = () => {
     }
 
     async function downloadFile(e) {
-        console.log('Active Scene : ', activeScene)
+        const sceneToExport = activeScene.clone()
 
         const exporter = new GLTFExporter()
 
-        activeScene.traverse((child) => {
-            if (child.isMesh) {
-                console.log(
-                    'Mesh:',
-                    child.name || '[no name]',
-                    '| Material:',
-                    child.material,
-                    '| Geometry:',
-                    child.geometry
-                )
-                child.material.needsUpdate = true
-            }
-        })
-
         exporter.parse(
-            activeScene,
+            sceneToExport,
             (result) => {
-                const output =
-                    typeof result === 'string' ? result : JSON.stringify(result)
-                const blob = new Blob([output], { type: 'application/json' })
-
-                // Create a link and download the file
-                const link = document.createElement('a')
-                link.href = URL.createObjectURL(blob)
-                link.download = `scene_1.gltf`
-                link.click()
-                URL.revokeObjectURL(link.href)
+                // console.log({ result })
+                if (result?.meshes?.length > 0) {
+                    const output =
+                        typeof result === 'string'
+                            ? result
+                            : JSON.stringify(result, null, 2)
+                    const blob = new Blob([output], {
+                        type: 'application/json',
+                    })
+                    const link = document.createElement('a')
+                    link.href = URL.createObjectURL(blob)
+                    link.download = `scene_${id}.gltf`
+                    link.click()
+                    URL.revokeObjectURL(link.href)
+                }
             },
-            { binary: false, includeCustomExtensions: true } // Set to true if you want .glb
+            { binary: false, includeCustomExtensions: true }
         )
     }
 
@@ -196,35 +176,6 @@ const Editor = () => {
         }, [gl, scene, camera])
 
         return null
-    }
-
-    const useDoubleTap = (callback, delay = 300) => {
-        const lastTap = useRef(0)
-        const tapTimeout = useRef(null)
-
-        useEffect(() => {
-            return () => {
-                if (tapTimeout.current) {
-                    clearTimeout(tapTimeout.current)
-                }
-            }
-        }, [])
-
-        const handleDoubleTap = (event) => {
-            const currentTime = new Date().getTime()
-            const tapLength = currentTime - lastTap.current
-
-            if (tapLength < delay && tapLength > 0) {
-                // Double tap detected
-                callback(event)
-                lastTap.current = 0
-            } else {
-                // Single tap
-                lastTap.current = currentTime
-            }
-        }
-
-        return handleDoubleTap
     }
 
     const DisableBrowserGestures = () => {
@@ -419,17 +370,11 @@ const Editor = () => {
         return null
     }
 
-    const handleDoubleTap = useDoubleTap((e) => {
-        setSnaping(true)
-    })
-
     const handleLogout = async (e) => {
         e.preventDefault()
-        console.log('Logging Out...')
 
         const result = await signOut()
         if (result.success) {
-            console.log('Successfully loged out')
             setSession(null)
             navigate('/sign-in')
         }
@@ -445,25 +390,30 @@ const Editor = () => {
             )}
 
             <div className="flex w-screen h-screen overflow-hidden prevent-select z-5">
+                {/* <Link to="/folders">
+                    <button className="absolute top-[16px] left-[20px] p-[8px] border-[1px] z-5 border-[#FFFFFF] bg-[#000000] hover:bg-[#202020] rounded-[4px] cursor-pointer">
+                        <BackIcon color="#FFFFFF" size={16} />
+                    </button>
+                </Link> */}
+
                 {/* <Link to="/sign-in"> */}
                 <button
-                    className="absolute top-[16px] left-[20px] p-[8px] border-[1px] z-5 border-[#FFFFFF] bg-[#000000] hover:bg-[#202020] rounded-[4px] cursor-pointer"
+                    className="absolute top-[16px] left-[20px] z-5 p-[8px] bg-[#000000] hover:bg-[#5D3FD3] font-bold cursor-pointer rounded-[8px]"
                     onClick={(e) => handleLogout(e)}
                 >
                     <SignOut color="#FFFFFF" size={16} />
                 </button>
                 {/* </Link> */}
-
-                <button
+                {/* <button
                     onClick={(e) => saveScene(e)}
                     className="absolute funnel-sans-regular top-[16px] left-[64px] p-[8px] z-5 border-[1px] border-[#FFFFFF] bg-[#000000] hover:bg-[#202020] rounded-[4px] cursor-pointer"
                 >
                     <CloudIcon color="#FFFFFF" size={16} />
-                </button>
+                </button> */}
 
                 <button
                     onClick={(e) => downloadFile(e)}
-                    className="absolute funnel-sans-regular top-[16px] left-[108px] z-5 p-[8px] border-[1px] border-[#FFFFFF] bg-[#000000] hover:bg-[#202020] rounded-[4px] cursor-pointer"
+                    className="absolute top-[16px] left-[64px] z-5 p-[8px] bg-[#000000] hover:bg-[#5D3FD3] font-bold cursor-pointer rounded-[8px]"
                 >
                     <SaveIcon color="#FFFFFF" size={16} />
                 </button>

@@ -8,13 +8,16 @@ export const canvasDrawStore = create((set, get) => ({
             notesData: obj,
         })),
 
+    plane: null,
+    setPlane: (p) => set({ plane: p }),
+
     penActive: false,
     setPenActive: (active) =>
         set((state) => ({
             penActive: active,
         })),
 
-    activeMaterialType: 'flat',
+    activeMaterialType: 'shaded',
     setActiveMaterialType: (type) =>
         set((state) => ({
             activeMaterialType: type,
@@ -104,6 +107,10 @@ export const canvasDrawStore = create((set, get) => ({
     widthBackground: `4.8% 100%`,
     stableBackground: `50% 100%`,
     opacityBackground: `100% 100%`,
+    tensionBackground: `50% 100%`,
+    ployBackground: `50% 100%`,
+    waistBackground: `50% 100%`,
+    radialBackground: `50% 100%`,
 
     setWidthBackground: (value) =>
         set((state) => ({
@@ -117,10 +124,31 @@ export const canvasDrawStore = create((set, get) => ({
         set((state) => ({
             opacityBackground: value,
         })),
+    setTensionBackground: (value) =>
+        set((state) => ({
+            tensionBackground: value,
+        })),
+    setWaistBackground: (value) =>
+        set((state) => ({
+            waistBackground: value,
+        })),
+    setRadialBackground: (value) =>
+        set((state) => ({
+            radialBackground: value,
+        })),
+    setPolyBackground: (value) =>
+        set((state) => ({
+            ployBackground: value,
+        })),
 
-    strokeWidth: 0.25,
+    strokeWidth: 0.1,
     strokeOpacity: 1,
     strokeStablePercentage: 50,
+    tensionPercentage: 50,
+    polyCountPercentage: 1,
+    radialPercentage: 50,
+    waistPercentage: 50,
+
     setStrokeWidth: (width) =>
         set((state) => ({
             strokeWidth: width,
@@ -133,6 +161,26 @@ export const canvasDrawStore = create((set, get) => ({
     setStrokeStablePercentage: (value) =>
         set((state) => ({
             strokeStablePercentage: value,
+        })),
+
+    setTensionPercentage: (value) =>
+        set((state) => ({
+            tensionPercentage: value,
+        })),
+
+    setRadialPercentage: (value) =>
+        set((state) => ({
+            radialPercentage: value,
+        })),
+
+    setWaistPercentage: (value) =>
+        set((state) => ({
+            waistPercentage: value,
+        })),
+
+    setPolyCountPercentage: (value) =>
+        set((state) => ({
+            polyCountPercentage: value,
         })),
 
     eraserActive: false,
@@ -171,7 +219,6 @@ export const canvasDrawStore = create((set, get) => ({
             drawGuide: draw,
         })),
 
-    bendPlaneGuide: false,
     ogGuidePoints: null,
     ogGuideNormals: null,
 
@@ -203,6 +250,28 @@ export const canvasDrawStore = create((set, get) => ({
     setBendPlaneGuide: (bool) =>
         set((state) => ({
             bendPlaneGuide: bool,
+        })),
+
+    loftGuidePlane: false,
+    setLoftGuidePlane: (bool) =>
+        set((state) => ({
+            loftGuidePlane: bool,
+        })),
+
+    highlighted: [],
+    setHighlighted: (data) =>
+        set((state) => ({
+            highlighted: data,
+        })),
+    addToHighlighted: (mesh) =>
+        set((state) => ({
+            highlighted: [...state.highlighted, mesh], // Add new product to the selectedGroups array
+        })),
+
+    generateLoftSurface: false,
+    setGenerateLoftSurface: (bool) =>
+        set((state) => ({
+            generateLoftSurface: bool,
         })),
 
     ogGuidePoints: null,

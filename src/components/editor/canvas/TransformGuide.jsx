@@ -1,18 +1,14 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { TransformControls } from '@react-three/drei'
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { TransformControls } from 'three/addons/controls/TransformControls.js'
 
 import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
 import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
 
-const TransfromGuide = ({ eraseFilter = () => true }) => {
-    const { camera, mouse, raycaster, scene, gl } = useThree()
-    const { axisMode, transformMode, dynamicDrawingPlaneMesh } =
-        canvasDrawStore((state) => state)
-
-    const planeRef = useRef()
+const TransfromGuide = () => {
+    const { camera, mouse, raycaster, scene, gl, invalidate } = useThree()
+    const { axisMode, transformMode } = canvasDrawStore((state) => state)
 
     const transformRef = useRef()
     const dummyTarget = useRef(new THREE.Group())
@@ -49,8 +45,76 @@ const TransfromGuide = ({ eraseFilter = () => true }) => {
         object.scale.copy(tempScale)
     }
 
+    // Initialize TransformControls once
     useEffect(() => {
+        const controls = new TransformControls(camera, gl.domElement)
+        controls.setSpace(axisMode)
+        controls.setMode(transformMode)
+        transformRef.current = controls
+
+        // CUSTOMIZE COLORS
+        controls.setColors({
+            x: '#ff0000', // Red for X axis
+            y: '#00ff00', // Green for Y axis
+            z: '#0000ff', // Blue for Z axis
+            active: '#FF5F1F', // Yellow when dragging
+        })
+
+        // HIDE PLANES AND EXTRA ELEMENTS TO REDUCE DRAW CALLS
+        // Hide the XY, YZ, XZ plane helpers
+        controls.showX = true // Keep X arrow
+        controls.showY = true // Keep Y arrow
+        controls.showZ = true // Keep Z arrow
+
+        // Access the gizmo helper and hide specific elements
+        const helper = controls._gizmo.gizmo.translate.children
+
+        helper.forEach((child) => {
+            if (
+                child.name == 'XY' ||
+                child.name == 'XZ' ||
+                child.name == 'YZ' ||
+                child.name == 'XYZ' ||
+                (child.geometry.type === 'CylinderGeometry' &&
+                    child.geometry?.paramters?.radiusTop === 0.0075)
+            ) {
+                child.scale.set(0, 0, 0)
+                child.material.visible = false
+                child.visible = false
+                child.updateMatrixWorld(true)
+            }
+        })
+
+        // Add event listeners
+        const onDragStart = () => {
+            isTransformDragging.current = true
+        }
+
+        const onDragEnd = () => {
+            isTransformDragging.current = false
+        }
+
+        const onDraggingChanged = (e) => {
+            isTransformDragging.current = e.value
+        }
+
+        controls.addEventListener('mouseDown', onDragStart)
+        controls.addEventListener('mouseUp', onDragEnd)
+        controls.addEventListener('dragging-changed', onDraggingChanged)
+
+        // Cleanup
         return () => {
+            controls.removeEventListener('mouseDown', onDragStart)
+            controls.removeEventListener('mouseUp', onDragEnd)
+            controls.removeEventListener('dragging-changed', onDraggingChanged)
+
+            const helper = controls.getHelper()
+            if (scene.children.includes(helper)) {
+                scene.remove(helper)
+            }
+            controls.detach()
+            controls.dispose()
+
             const dummy = dummyTarget.current
             if (!dummy) return
 
@@ -68,39 +132,80 @@ const TransfromGuide = ({ eraseFilter = () => true }) => {
                 scene.remove(dummy)
             }
 
-            // console.log({ scene })
             highlighted.current.clear()
             gl.info.autoReset = false
             gl.info.reset()
-            setAttachedGizmos(false)
-            resetDummyTarget()
         }
-    }, [scene])
+    }, [camera, gl, scene])
 
-    const resetDummyTarget = () => {
-        const dummy = dummyTarget.current
+    // Update visibility when mode changes
+    useEffect(() => {
+        if (transformRef.current) {
+            transformRef.current.setMode(transformMode)
 
-        if (dummy) {
-            dummy.children.forEach((child) => {
-                if (child.isMesh) {
-                    if (child.geometry) child.geometry.dispose()
-                    if (child.material) {
-                        const materials = Array.isArray(child.material)
-                            ? child.material
-                            : [child.material]
-                        materials.forEach((mat) => mat.dispose?.())
+            // Re-hide planes after mode change
+            const helper = transformRef.current.getHelper()
+            const gizmoIndex =
+                transformMode === 'translate'
+                    ? 0
+                    : transformMode === 'rotate'
+                    ? 1
+                    : 2
+
+            if (helper.children[gizmoIndex]) {
+                const gizmo = helper.children[gizmoIndex]
+                gizmo.children.forEach((child) => {
+                    if (
+                        child.name &&
+                        (child.name.includes('XY') ||
+                            child.name.includes('YZ') ||
+                            child.name.includes('XZ') ||
+                            child.name.includes('XYZ') ||
+                            child.name.includes('E'))
+                    ) {
+                        child.scale.set(0, 0, 0)
+                        child.material.visible = false
+                        child.visible = false
+                        child.updateMatrixWorld(true)
                     }
-                }
-                dummy.remove(child)
-            })
-
-            if (scene.children.includes(dummy)) {
-                scene.remove(dummy)
+                })
             }
         }
+    }, [transformMode])
 
-        dummyTarget.current = new THREE.Group()
-    }
+    // Attach/detach controls based on attachedGizmos state
+    useEffect(() => {
+        const controls = transformRef.current
+        if (!controls) return
+
+        if (attachedGizmos && dummyTarget.current) {
+            controls.attach(dummyTarget.current)
+            // Use getHelper() instead of adding controls directly
+            const helper = controls.getHelper()
+            if (!scene.children.includes(helper)) {
+                scene.add(helper)
+            }
+        } else {
+            controls.detach()
+            const helper = controls.getHelper()
+            if (scene.children.includes(helper)) {
+                scene.remove(helper)
+            }
+        }
+    }, [attachedGizmos, scene])
+
+    // Update transform mode and space when they change
+    useEffect(() => {
+        if (transformRef.current) {
+            transformRef.current.setMode(transformMode)
+        }
+    }, [transformMode])
+
+    useEffect(() => {
+        if (transformRef.current) {
+            transformRef.current.setSpace(axisMode)
+        }
+    }, [axisMode])
 
     const computeCenter = (objects) => {
         const box = new THREE.Box3()
@@ -141,7 +246,7 @@ const TransfromGuide = ({ eraseFilter = () => true }) => {
 
         const selectedObjects = Array.from(highlighted.current)
         if (selectedObjects.length === 0) return
-        // console.log({ selectedObjects })
+
         const center = computeCenter(selectedObjects)
         selectedCenter.current.copy(center)
         dummyTarget.current.position.copy(center)
@@ -155,21 +260,20 @@ const TransfromGuide = ({ eraseFilter = () => true }) => {
             dummyTarget.current.add(obj)
             if (obj.material) {
                 obj.material.transparent = true
-                // obj.material.opacity = 1
-                obj.material.color = new THREE.Color(0xf2f2f2)
-                // obj.material.needsUpdate = true
+                obj.material.opacity = 0.25
             }
         })
+
+        invalidate() // Add this
 
         setAttachedGizmos(true)
     }
 
     const resetHighlight = () => {
         highlighted.current.forEach((obj) => {
-            if (obj.material?.transparent !== undefined) {
-                // obj.material.opacity = 1
-                // obj.material.color = new THREE.Color(0xf2f2f2)
-                // obj.material.needsUpdate = true
+            if (obj.material) {
+                obj.material.transparent = true
+                obj.material.opacity = 0.25
             }
         })
         highlighted.current.clear()
@@ -190,82 +294,30 @@ const TransfromGuide = ({ eraseFilter = () => true }) => {
         raycaster.setFromCamera(mouse, camera)
         const objectsToTest = scene.children.filter(
             (obj) =>
-                // obj.isMesh && obj.userData?.type === 'Line' && eraseFilter(obj)
                 obj.isMesh &&
-                (obj.userData?.type === 'OG_Guide_Plane' ||
-                    obj.userData?.type === 'Bend_Guide_Plane') &&
-                eraseFilter(obj)
+                (obj.userData?.type === 'Bend_Guide_Plane' ||
+                    obj.userData?.type === 'Loft_Surface' ||
+                    obj.userData?.type === 'Dynamic_Guide_Line' ||
+                    obj.userData?.type === 'OG_Guide_Plane')
         )
 
         const intersects = raycaster.intersectObjects(objectsToTest, true)
-        // console.log({ intersects })
+        let hasNewHighlight = false
+
         intersects.forEach(({ object }) => {
-            if (
-                // intersects.length > 0 &&
-                // intersects[0]?.object &&
-                !highlighted.current.has(object)
-            ) {
+            if (!highlighted.current.has(object)) {
                 highlighted.current.add(object)
                 if (object.material) {
                     object.material.transparent = true
-                    // object.material.opacity = 0.5
-                    object.material.color = new THREE.Color(0x008000)
-                    object.material.needsUpdate = true
-                    // object.material.color =
+                    object.material.opacity = 0.5
                 }
             }
         })
+
+        if (hasNewHighlight) {
+            invalidate()
+        }
     })
-
-    useEffect(() => {
-        const controls = transformRef.current
-        if (!controls) return
-
-        const onDragStart = () => (isTransformDragging.current = true)
-        const onDragEnd = () => (isTransformDragging.current = false)
-        const onDraggingChanged = (e) => {
-            isTransformDragging.current = e.value
-        }
-
-        controls.addEventListener('mouseDown', onDragStart)
-        controls.addEventListener('mouseUp', onDragEnd)
-        controls.addEventListener('dragging-changed', onDraggingChanged)
-
-        return () => {
-            controls.removeEventListener('mouseDown', onDragStart)
-            controls.removeEventListener('mouseUp', onDragEnd)
-            controls.removeEventListener('dragging-changed', onDraggingChanged)
-
-            gl.info.autoReset = false
-            gl.info.reset()
-        }
-    }, [])
-
-    return (
-        <>
-            {attachedGizmos && (
-                <TransformControls
-                    ref={transformRef}
-                    object={dummyTarget.current}
-                    axisColors={['#ff0000', '#00ff00', '#0000ff']}
-                    activeColor="purple"
-                    mode={transformMode}
-                    space={axisMode}
-                    onMouseDown={() => {
-                        isTransformDragging.current = true
-                    }}
-                    onMouseUp={() => {
-                        isTransformDragging.current = false
-                    }}
-                    userData={{ type: 'tranfromer' }}
-                />
-            )}
-
-            {dynamicDrawingPlaneMesh && (
-                <primitive object={dynamicDrawingPlaneMesh} ref={planeRef} />
-            )}
-        </>
-    )
 }
 
 export default TransfromGuide

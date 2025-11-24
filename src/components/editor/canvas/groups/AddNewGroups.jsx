@@ -6,9 +6,10 @@ import WrongIcon from '../../../svg-icons/WrongIcon'
 import { dashboardStore } from '../../../../hooks/useDashboardStore'
 import { saveGroupToIndexDB } from '../../../../helpers/sceneFunction'
 import { canvasRenderStore } from '../../../../hooks/useRenderSceneStore'
+import WrongButtonIcon from '../../../svg-icons/WrongButtonIcon'
 
 const AddNewGroups = () => {
-    const { id } = useParams()
+    const { id = 1 } = useParams()
     const { setNewGroupModal } = dashboardStore((state) => state)
     const [animateOut, setAnimateOut] = useState(false)
     const [groupName, setGroupName] = useState('')
@@ -39,12 +40,12 @@ const AddNewGroups = () => {
                 setLoading(false)
                 return
             }
-            console.log('Creating New Group  : ', session)
+            // console.log('Creating New Group  : ', session)
 
             const data = {
                 uuid: uuid(),
                 name: groupName,
-                note_id: 1,
+                note_id: id,
                 created_at: new Date().toISOString(),
                 deleted_at: null,
                 // created_by: session.id,
@@ -76,12 +77,12 @@ const AddNewGroups = () => {
     return (
         <div>
             <div className="relative z-10 funnel-sans-regular">
-                <div className="fixed inset-0 bg-gray-500/75 transition-opacity duration-200"></div>
+                <div className="fixed inset-0 bg-[#606060]/50 transition-opacity duration-200"></div>
 
                 <div className="fixed inset-0 z-10 overflow-y-auto text-[8px] md:text-[12px]">
                     <div className="flex h-full items-center justify-center text-center">
                         <div
-                            className={`bg-[#000000] relative overflow-hidden rounded-[4px] w-[320px] md:w-[420px] transition-all duration-200 ease-out transform
+                            className={`bg-[#171717] relative overflow-hidden rounded-[8px] w-[320px] md:w-[420px] transition-all duration-200 ease-out transform
                                 ${
                                     animateOut
                                         ? 'animate-fade-out'
@@ -94,9 +95,9 @@ const AddNewGroups = () => {
                                 </div>
                                 <div
                                     onClick={(e) => handleClose(e)}
-                                    className="active:scale-75 p-[4px] flex justify-between rounded-[4px] items-center cursor-pointer border-1 border-[#FFFFFF] hover:border-[#0096c7]"
+                                    className="group text-[#606060] hover:text-[#FFFFFF] active:scale-90 p-[4px] flex justify-between rounded-[8px] items-center cursor-pointer"
                                 >
-                                    <WrongIcon color="#FFFFFF" size={12} />
+                                    <WrongButtonIcon size={12} />
                                 </div>
                             </div>
                             <div className="mx-[20px] mt-[12px]">
@@ -107,7 +108,7 @@ const AddNewGroups = () => {
                                     <input
                                         onChange={(e) => handleNameChange(e)}
                                         type="text"
-                                        className="border-[1px] border-[#d9d9d9] text-[#ffffff] rounded-[4px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                        className="border-[1px] border-[#d9d9d9] text-[#ffffff] rounded-[8px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
                                         required
                                         disabled={loading}
                                     />
@@ -116,7 +117,7 @@ const AddNewGroups = () => {
                             <div className="mt-[12px] flex justify-end items-center px-4 py-3 gap-[12px]">
                                 <button
                                     onClick={(e) => handleClose(e)}
-                                    className="active:scale-85 text-[#FFFFFF] border-[#FFFFFF] border-[1px] px-[12px] py-[4px] rounded-[4px] cursor-pointer"
+                                    className="active:scale-90 text-[#FFFFFF] border-[#FFFFFF] border-[1px] px-[12px] py-[4px] rounded-[8px] cursor-pointer "
                                 >
                                     Cancel
                                 </button>
@@ -124,7 +125,7 @@ const AddNewGroups = () => {
                                 <button
                                     disabled={loading}
                                     onClick={(e) => handleCreateNewGroup(e)}
-                                    className="text-[#000000] active:scale-85 px-[12px] py-[4px] rounded-[4px] bg-[#50C878] cursor-pointer"
+                                    className="active:scale-90 text-[#FFFFFF] px-[12px] py-[4px] rounded-[8px] border-[#5D3FD3] bg-[#5D3FD3]/50 border-[1px] cursor-pointer"
                                 >
                                     Create
                                 </button>

@@ -32,7 +32,7 @@ export const canvasRenderStore = create((set, get) => ({
             sequentialLoading: bool,
         })),
 
-    canvasBackgroundColor: '#ffffff',
+    canvasBackgroundColor: '#FFFFFF',
     setCanvasBackgroundColor: (color) =>
         set((state) => ({
             canvasBackgroundColor: color,
@@ -123,7 +123,7 @@ export const canvasRenderStore = create((set, get) => ({
         const newGroups = selectedGroups.map((g) => ({
             uuid: uuid(),
             name: g.name + '_copy',
-            note_id: 1,
+            note_id: g.note_id,
             created_at: new Date().toISOString(),
             deleted_at: null,
             created_by: g.created_by,
