@@ -1035,19 +1035,16 @@ const ToolPanel = () => {
                     <div className="flex justify-center items-center gap-[8px] border-1 border-amber-50 p-[4px]">
                         <button
                             onClick={(e) => handleDraw('cancel_loft_guide')}
-                            className="active:scale-90 text-[#FFFFFF] px-[4px] py-[4px] rounded-[8px] border-[#7f2315] bg-[#000000] border-[1px] cursor-pointer"
+                            className={`active:scale-90 hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px]`}
                         >
-                            <WrongButtonIcon color="#541c15" size={28} />
-                            {/* Cancel */}
+                            <WrongButtonIcon color="#FFFFFF" size={20} />
                         </button>
 
                         <button
                             onClick={(e) => handleDraw('generate_loft_guide')}
-                            // className="active:scale-90 text-[#FFFFFF] px-[16px] py-[4px] rounded-[8px] border-[#2cc182] bg-[#000000] border-[1px] cursor-pointer"
-                            className="active:scale-90 text-[#FFFFFF] px-[4px] py-[4px] rounded-[8px] border-[#2cc182] bg-[#000000] border-[1px] cursor-pointer"
+                            className={`active:scale-90 hover:bg-[#5D3FD3] flex justify-center font-bold p-[8px] cursor-pointer rounded-[8px] border-[0px]`}
                         >
-                            <CorrectIcon color="#006239" size={28} />
-                            {/* Done */}
+                            <CorrectIcon color="#FFFFFF" size={20} />
                         </button>
                     </div>
                 </div>
