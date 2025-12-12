@@ -1,129 +1,96 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import axios from 'axios'
-import * as THREE from 'three'
 import { v4 as uuid } from 'uuid'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 
-import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
-import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
-import { dashboardStore } from '../../hooks/useDashboardStore'
-
-import ViewsPanel from './ViewsPanel'
 import Canvas3d from './Canvas3d'
-import ToolPanel from './ToolPanel'
+import ToolPanel from './canvas/tools/ToolPanel'
+import ViewsPanel from './canvas/tools/ViewsPanel'
 
+import PenIcon from '../svg-icons/PenIcon'
 import SaveIcon from '../svg-icons/SaveIcon'
-import CloudIcon from '../svg-icons/CloudIcon'
-import SignOut from '../svg-icons/SignOut'
+import DarkIcon from '../svg-icons/DarkIcon'
+import MouseIcon from '../svg-icons/MouseIcon'
+import TouchIcon from '../svg-icons/TouchIcon'
+import LightIcon from '../svg-icons/LightIcon'
+import GitHubIcon from '../svg-icons/GitHubIcon'
+import BurgerIcon from '../svg-icons/BurgerIcon'
 
-import {
-    loadSceneFromIndexedDB,
-    saveGroupToIndexDB,
-} from '../../helpers/sceneFunction'
-import { ADD_NOTE_DATA, FETECH_NOTE_BY_ID } from '../../services/api'
-import { UserAuth } from '../../context/AuthContext'
+import { dashboardStore } from '../../hooks/useDashboardStore'
+import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
+import { canvasViewStore } from '../../hooks/useCanvasViewStore'
+import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
+
+import ToolTip from '../info/ToolTip'
+import CopyGroups from './canvas/groups/CopyGroups'
+import AddNewGroups from './canvas/groups/AddNewGroups'
+import RenameGroups from './canvas/groups/RenameGroups'
+import DeleteGroups from './canvas/groups/DeleteGroups'
+
+import { loadSceneFromIndexedDB, saveGroupToIndexDB } from '../../db/storage'
 
 const Editor = () => {
-    const { id = 1 } = useParams()
-    const { signOut } = UserAuth()
     const [error, setError] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [isSmall, setIsSmall] = useState(window.innerWidth < 768)
+    const [showOptions, setShowOptions] = useState(false)
 
-    const excludedKeys = ['geometry', 'material', 'mesh']
-    const { session, setSession } = dashboardStore((state) => state)
+    const { sceneOptions } = canvasRenderStore((state) => state)
+
+    const {
+        newGroupModal,
+        copyGroupModal,
+        renameGroupModal,
+        deleteGroupModal,
+    } = dashboardStore((state) => state)
+
     const hasRun = useRef(false)
 
-    const { setNotesData } = canvasDrawStore((state) => state)
+    const { setNotesData, pointerType, setPointerType } = canvasDrawStore(
+        (state) => state
+    )
     const { addNewGroup, activeScene, setGroupData, setActiveGroup } =
         canvasRenderStore((state) => state)
+
+    const { darkTheme, setDarkTheme } = canvasViewStore((state) => state)
 
     useEffect(() => {
         if (hasRun.current) return
         hasRun.current = true
 
-        if (id) fetchNoteData()
-    }, [id])
+        fetchNoteData()
+    }, [])
 
     const fetchNoteData = async () => {
         try {
             setLoading(true)
             setNotesData(null)
 
-            const { groupData, lineData } = await loadSceneFromIndexedDB(id)
+            const { groupData } = await loadSceneFromIndexedDB()
 
+            console.log({ groupData })
             if (groupData && groupData.length > 0) {
                 setGroupData(groupData)
                 const activeGroup = groupData.find((g) => g.active)
-                setActiveGroup(activeGroup.uuid)
+                setActiveGroup(activeGroup)
             } else {
-                // console.log('Inside create group data...')
                 const data = {
                     uuid: uuid(),
-                    name: 'G1',
-                    note_id: id,
+                    name: 'Group 1',
                     created_at: new Date().toISOString(),
                     deleted_at: null,
-                    created_by: session.id,
                     visible: true,
                     active: true,
+                    objects: [],
                 }
                 addNewGroup(data)
-                setActiveGroup(data.uuid)
+                setActiveGroup(data)
 
-                const response = await saveGroupToIndexDB(
-                    canvasRenderStore.getState().groupData,
-                    id
-                )
+                await saveGroupToIndexDB(canvasRenderStore.getState().groupData)
 
                 setGroupData(canvasRenderStore.getState().groupData)
             }
-
-            if (lineData && lineData.length > 0) {
-                // Generate and add lines
-            }
         } catch (error) {
             setError(error.message)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    async function saveScene(e) {
-        setLoading(true)
-        try {
-            let { groupData, lineData } = await loadSceneFromIndexedDB(id)
-            if (groupData || lineData) {
-                const formData = new FormData()
-                formData.append('note_id', id)
-
-                if ('storage' in navigator && 'estimate' in navigator.storage) {
-                    navigator.storage.estimate().then(({ usage, quota }) => {
-                        // console.log(`Used: ${usage / 1024 / 1024} MB`)
-                        // console.log(`Quota: ${quota / 1024 / 1024} MB`)
-                    })
-                }
-
-                if (lineData) {
-                    formData.append('lines', JSON.stringify(lineData))
-                }
-
-                if (groupData) {
-                    formData.append('groups', JSON.stringify(groupData))
-                }
-
-                let response = await axios.post(ADD_NOTE_DATA, formData, {
-                    withCredentials: true,
-                })
-
-                if (response) {
-                    // console.log('Response : ', response)
-                }
-            } else {
-                // console.log('No Groups or Lines to store')
-            }
-        } catch (error) {
-            console.error(error)
         } finally {
             setLoading(false)
         }
@@ -137,7 +104,6 @@ const Editor = () => {
         exporter.parse(
             sceneToExport,
             (result) => {
-                // console.log({ result })
                 if (result?.meshes?.length > 0) {
                     const output =
                         typeof result === 'string'
@@ -148,7 +114,7 @@ const Editor = () => {
                     })
                     const link = document.createElement('a')
                     link.href = URL.createObjectURL(blob)
-                    link.download = `scene_${id}.gltf`
+                    link.download = `scene.gltf`
                     link.click()
                     URL.revokeObjectURL(link.href)
                 }
@@ -157,36 +123,16 @@ const Editor = () => {
         )
     }
 
-    const HighResRenderer = ({ scene, camera }) => {
-        const { gl } = useThree()
-
-        useEffect(() => {
-            const width = 7680
-            const height = 4320
-
-            const renderTarget = new THREE.WebGLRenderTarget(width, height)
-            renderTarget.texture.encoding = THREE.sRGBEncoding
-
-            gl.setRenderTarget(renderTarget)
-            gl.render(scene, camera)
-            gl.setRenderTarget(null)
-
-            const pixels = new Uint8Array(width * height * 4)
-            gl.readRenderTargetPixels(renderTarget, 0, 0, width, height, pixels)
-        }, [gl, scene, camera])
-
-        return null
-    }
-
     const DisableBrowserGestures = () => {
         useEffect(() => {
-            // Prevent default touch behaviors
             const preventDefaultTouch = (e) => {
-                // Allow scroll on elements with 'overflow-y-auto' or 'custom-scrollbar'
-                if (e.target.closest('.overflow-y-auto, .custom-scrollbar')) {
+                if (
+                    e.target.closest(
+                        '.overflow-y-auto, .custom-scrollbar, .gesture-allowed'
+                    )
+                ) {
                     return
                 }
-                // Allow touch on canvas for double-tap
                 if (e.target.tagName === 'CANVAS') {
                     return
                 }
@@ -195,13 +141,14 @@ const Editor = () => {
                 }
             }
 
-            // Prevent pull-to-refresh and overscroll
             const preventPullToRefresh = (e) => {
-                // Allow scroll on scrollable elements
-                if (e.target.closest('.overflow-y-auto, .custom-scrollbar')) {
+                if (
+                    e.target.closest(
+                        '.overflow-y-auto, .custom-scrollbar, .gesture-allowed'
+                    )
+                ) {
                     return
                 }
-                // Allow on canvas
                 if (e.target.tagName === 'CANVAS') {
                     return
                 }
@@ -210,9 +157,12 @@ const Editor = () => {
                 }
             }
 
-            // Prevent default gestures
             const preventDefaultGestures = (e) => {
-                if (e.target.closest('.overflow-y-auto, .custom-scrollbar')) {
+                if (
+                    e.target.closest(
+                        '.overflow-y-auto, .custom-scrollbar, .gesture-allowed'
+                    )
+                ) {
                     return
                 }
                 if (e.target.tagName === 'CANVAS') {
@@ -221,9 +171,12 @@ const Editor = () => {
                 e.preventDefault()
             }
 
-            // Prevent context menu
             const preventContextMenu = (e) => {
-                if (e.target.closest('.overflow-y-auto, .custom-scrollbar')) {
+                if (
+                    e.target.closest(
+                        '.overflow-y-auto, .custom-scrollbar, .gesture-allowed'
+                    )
+                ) {
                     return
                 }
                 if (e.target.tagName === 'CANVAS') {
@@ -232,17 +185,18 @@ const Editor = () => {
                 e.preventDefault()
             }
 
-            // Modified: Allow double-tap on canvas, prevent elsewhere
             let lastTouchEnd = 0
             const preventDoubleTapZoom = (e) => {
-                if (e.target.closest('.overflow-y-auto, .custom-scrollbar')) {
+                if (
+                    e.target.closest(
+                        '.overflow-y-auto, .custom-scrollbar, .gesture-allowed'
+                    )
+                ) {
                     return
                 }
-                // ALLOW double-tap on canvas (don't prevent)
                 if (e.target.tagName === 'CANVAS') {
                     return
                 }
-                // PREVENT double-tap zoom elsewhere
                 const now = Date.now()
                 if (now - lastTouchEnd <= 300) {
                     e.preventDefault()
@@ -250,9 +204,12 @@ const Editor = () => {
                 lastTouchEnd = now
             }
 
-            // Prevent all scroll behavior (except on scrollable elements)
             const preventScroll = (e) => {
-                if (e.target.closest('.overflow-y-auto, .custom-scrollbar')) {
+                if (
+                    e.target.closest(
+                        '.overflow-y-auto, .custom-scrollbar, .gesture-allowed'
+                    )
+                ) {
                     return
                 }
                 if (e.target.tagName === 'CANVAS') {
@@ -263,9 +220,12 @@ const Editor = () => {
                 return false
             }
 
-            // Prevent wheel/trackpad scroll (except on scrollable elements)
             const preventWheel = (e) => {
-                if (e.target.closest('.overflow-y-auto, .custom-scrollbar')) {
+                if (
+                    e.target.closest(
+                        '.overflow-y-auto, .custom-scrollbar, .gesture-allowed'
+                    )
+                ) {
                     return
                 }
                 if (e.target.tagName === 'CANVAS') {
@@ -274,9 +234,12 @@ const Editor = () => {
                 e.preventDefault()
             }
 
-            // Prevent keyboard scroll
             const preventKeyboardScroll = (e) => {
-                if (e.target.closest('.overflow-y-auto, .custom-scrollbar')) {
+                if (
+                    e.target.closest(
+                        '.overflow-y-auto, .custom-scrollbar, .gesture-allowed'
+                    )
+                ) {
                     return
                 }
                 const scrollKeys = [32, 33, 34, 35, 36, 37, 38, 39, 40]
@@ -286,7 +249,6 @@ const Editor = () => {
                 }
             }
 
-            // Add event listeners
             document.addEventListener('gesturestart', preventDefaultGestures, {
                 passive: false,
             })
@@ -332,7 +294,6 @@ const Editor = () => {
 
             window.scrollTo(0, 0)
 
-            // Cleanup
             return () => {
                 document.removeEventListener(
                     'gesturestart',
@@ -370,61 +331,212 @@ const Editor = () => {
         return null
     }
 
-    const handleLogout = async (e) => {
-        e.preventDefault()
-
-        const result = await signOut()
-        if (result.success) {
-            setSession(null)
-            navigate('/sign-in')
-        }
-    }
+    useEffect(() => {
+        const onResize = () => setIsSmall(window.innerWidth < 768)
+        window.addEventListener('resize', onResize)
+        return () => window.removeEventListener('resize', onResize)
+    }, [])
 
     return (
         <>
             <DisableBrowserGestures />
-            {loading && (
-                <div className="relative funnel-sans-regular">
-                    <div className="fixed inset-0 bg-transparent transition-opacity duration-200"></div>
-                </div>
-            )}
 
             <div className="flex w-screen h-screen overflow-hidden prevent-select z-5">
-                {/* <Link to="/folders">
-                    <button className="absolute top-[16px] left-[20px] p-[8px] border-[1px] z-5 border-[#FFFFFF] bg-[#000000] hover:bg-[#202020] rounded-[4px] cursor-pointer">
-                        <BackIcon color="#FFFFFF" size={16} />
+                {/* <div className="bg-[#FFFFFF]"> */}
+                <div className="absolute top-[12px] left-[12px] z-5 flex items-center gap-[4px] p-[4px] rounded-[8px]  border-[1px] border-[#4B5563]/25 bg-[#FFFFFF] hover:bg-[#5CA367]/75">
+                    <button
+                        onClick={(e) => setShowOptions(!showOptions)}
+                        className="flex justify-center font-bold p-[8px] rounded-[4px]"
+                    >
+                        <BurgerIcon color="#000000" size={isSmall ? 8 : 12} />
                     </button>
-                </Link> */}
+                </div>
+                {/* </div> */}
 
-                {/* <Link to="/sign-in"> */}
-                <button
-                    className="absolute top-[16px] left-[20px] z-5 p-[8px] bg-[#000000] hover:bg-[#5D3FD3] font-bold cursor-pointer rounded-[8px]"
-                    onClick={(e) => handleLogout(e)}
-                >
-                    <SignOut color="#FFFFFF" size={16} />
-                </button>
-                {/* </Link> */}
-                {/* <button
-                    onClick={(e) => saveScene(e)}
-                    className="absolute funnel-sans-regular top-[16px] left-[64px] p-[8px] z-5 border-[1px] border-[#FFFFFF] bg-[#000000] hover:bg-[#202020] rounded-[4px] cursor-pointer"
-                >
-                    <CloudIcon color="#FFFFFF" size={16} />
-                </button> */}
+                {showOptions && (
+                    <div className="absolute top-[72px] left-[12px] z-5 flex-col items-center gap-[4px] text-[8px] md:text-[12px] funnel-sans-regular rounded-[8px] bg-[#FFFFFF] border-[1px] border-[#4B5563]/25 drop-shadow-xl ">
+                        <ul>
+                            <li
+                                onClick={(e) => downloadFile(e)}
+                                className="flex justify-between items-center text-[8px] m-[4px] md:text-[12px] funnel-sans-regular gap-[12px] hover:bg-[#5CA367]/25 rounded-[4px] cursor-pointer"
+                            >
+                                <ToolTip
+                                    text="Download model"
+                                    position="right-bottom"
+                                    delay={100}
+                                >
+                                    <button className="flex justify-center items-center font-bold px-[8px] rounded-[4px] cursor-pointer">
+                                        <SaveIcon
+                                            color="#000000"
+                                            size={isSmall ? 12 : 16}
+                                        />
 
-                <button
-                    onClick={(e) => downloadFile(e)}
-                    className="absolute top-[16px] left-[64px] z-5 p-[8px] bg-[#000000] hover:bg-[#5D3FD3] font-bold cursor-pointer rounded-[8px]"
-                >
-                    <SaveIcon color="#FFFFFF" size={16} />
-                </button>
+                                        <div className="p-[12px] funnel-sans-regular">
+                                            Download file
+                                        </div>
+                                    </button>
+                                </ToolTip>
+                            </li>
+
+                            {/* <li className="flex justify-between items-center text-[8px] m-[4px] md:text-[12px] funnel-sans-regular gap-[12px] hover:bg-[#5CA367]/25 rounded-[4px] cursor-pointer">
+                                <ToolTip
+                                    text="GitHub"
+                                    position="bottom-right"
+                                    delay={100}
+                                >
+                                    <a
+                                        className="flex justify-center items-center font-bold px-[8px] rounded-[4px] cursor-pointer"
+                                        href="https://github.com/SW881/penxil"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <div>
+                                            <GitHubIcon
+                                                color="#000000"
+                                                size={isSmall ? 12 : 16}
+                                            />
+                                        </div>
+
+                                        <div className="p-[12px] funnel-sans-regular">
+                                            GitHub
+                                        </div>
+                                    </a>
+                                </ToolTip>
+                            </li> */}
+
+                            <li className="flex border-b-[1px] border-[#4B5563]/25"></li>
+                            {/* <li className="flex justify-between items-center p-[4px] m-[4px] gap-[12px]">
+                                <div>Theme</div>
+                                <div className="flex justify-between items-center gap-[4px]">
+                                    <ToolTip
+                                        text="Light"
+                                        position="bottom"
+                                        delay={100}
+                                    >
+                                        <button
+                                            onClick={(e) => setDarkTheme(false)}
+                                            className={`flex justify-center font-bold p-[8px] rounded-[4px] cursor-pointer ${
+                                                !darkTheme
+                                                    ? 'bg-[#5CA367]'
+                                                    : 'hover:bg-[#5CA367]/25'
+                                            }`}
+                                        >
+                                            <LightIcon
+                                                color="#000000"
+                                                size={isSmall ? 12 : 20}
+                                            />
+                                        </button>
+                                    </ToolTip>
+
+                                    <ToolTip
+                                        text="Dark"
+                                        position="bottom"
+                                        delay={100}
+                                    >
+                                        <button
+                                            onClick={(e) => setDarkTheme(true)}
+                                            className={`flex justify-center font-bold p-[8px] rounded-[4px] cursor-pointer ${
+                                                darkTheme
+                                                    ? 'bg-[#5CA367]'
+                                                    : 'hover:bg-[#5CA367]/25'
+                                            }`}
+                                        >
+                                            <DarkIcon
+                                                color="#000000"
+                                                size={isSmall ? 12 : 20}
+                                            />
+                                        </button>
+                                    </ToolTip>
+                                </div>
+                            </li> */}
+                            {/* <li className="flex border-b-[1px] border-[#4B5563]/25"></li> */}
+                            <li className="flex justify-between items-center p-[4px] m-[4px] gap-[12px]">
+                                <div>Pointer</div>
+                                <div className="flex justify-between items-center gap-[4px]">
+                                    <ToolTip
+                                        text="Stylus"
+                                        position="bottom"
+                                        delay={100}
+                                    >
+                                        <button
+                                            onClick={(e) =>
+                                                setPointerType('pen')
+                                            }
+                                            className={`flex justify-center font-bold p-[8px] rounded-[4px] cursor-pointer ${
+                                                pointerType === 'pen'
+                                                    ? 'bg-[#5CA367]'
+                                                    : 'hover:bg-[#5CA367]/25'
+                                            }`}
+                                        >
+                                            <PenIcon
+                                                color="#000000"
+                                                size={isSmall ? 12 : 20}
+                                            />
+                                        </button>
+                                    </ToolTip>
+
+                                    <ToolTip
+                                        text="Mouse"
+                                        position="bottom"
+                                        delay={100}
+                                    >
+                                        <button
+                                            onClick={(e) =>
+                                                setPointerType('mouse')
+                                            }
+                                            className={`flex justify-center font-bold p-[8px] rounded-[4px] cursor-pointer ${
+                                                pointerType === 'mouse'
+                                                    ? 'bg-[#5CA367]'
+                                                    : 'hover:bg-[#5CA367]/25'
+                                            }`}
+                                        >
+                                            <MouseIcon
+                                                color="#000000"
+                                                size={isSmall ? 12 : 20}
+                                            />
+                                        </button>
+                                    </ToolTip>
+
+                                    <ToolTip
+                                        text="Touch"
+                                        position="bottom"
+                                        delay={100}
+                                    >
+                                        <button
+                                            onClick={(e) =>
+                                                setPointerType('touch')
+                                            }
+                                            className={`flex justify-center font-bold p-[8px] rounded-[4px] cursor-pointer ${
+                                                pointerType === 'touch'
+                                                    ? 'bg-[#5CA367]'
+                                                    : 'hover:bg-[#5CA367]/25'
+                                            }`}
+                                        >
+                                            <TouchIcon
+                                                color="#000000"
+                                                size={isSmall ? 12 : 20}
+                                            />
+                                        </button>
+                                    </ToolTip>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                )}
+
+                {sceneOptions && newGroupModal && <AddNewGroups />}
+                {sceneOptions && renameGroupModal && <RenameGroups />}
+                {sceneOptions && copyGroupModal && <CopyGroups />}
+                {sceneOptions && deleteGroupModal && <DeleteGroups />}
+
                 <div>
-                    <ToolPanel />
+                    <ToolPanel isSmall={isSmall} />
                 </div>
                 <div className="flex-grow w-full h-full">
-                    <Canvas3d id={id} />
+                    <Canvas3d />
                 </div>
                 <div>
-                    <ViewsPanel />
+                    <ViewsPanel isSmall={isSmall} />
                 </div>
             </div>
         </>

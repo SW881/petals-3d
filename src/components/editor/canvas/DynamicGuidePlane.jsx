@@ -5,6 +5,15 @@ import * as THREE from 'three'
 import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
 import { canvasViewStore } from '../../../hooks/useCanvasViewStore'
 
+import {
+    smoothArray,
+    smoothPoints,
+    filterPoints,
+    generateCirclePointsWorld,
+    getSnappedLinePointsInPlane,
+    generateSemiCircleOpenArcWorld,
+} from '../../../helpers/drawHelper'
+
 const DynamicGuidePlane = ({ onDrawingFinished }) => {
     const { camera, scene, gl } = useThree()
     const planeRef = useRef()
@@ -15,19 +24,18 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
         strokeOpacity,
         setOgGuidePoints,
         setOgGuideNormals,
-        strokeStablePercentage,
+        pointerType,
     } = canvasDrawStore((state) => state)
 
     const { setOrbitalLock } = canvasViewStore((state) => state)
 
     const MAX_POINTS = 50000
     const SMOOTH_PERCENTAGE = 75
-    // const SMOOTH_PERCENTAGE = strokeStablePercentage
     const DISTANCE_THRESHOLD = 0.01
-    const OPTIMIZATION_THRESHOLD = 0.01 // Threshold for pre-smoothing filtering
-    let startPoint = null
-    let currentNormal = null // To store the normal of the drawing plane
+    const OPTIMIZATION_THRESHOLD = 0.01
 
+    let startPoint = null
+    let currentNormal = null
     let isDrawing = false
     let points = []
     let pressures = []
@@ -35,230 +43,6 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
     let currentMesh = null
 
     const color = new THREE.Color('#C0C0C0')
-
-    const generateCirclePointsWorld = useCallback(
-        (center, normal, radius, segments = 64) => {
-            const circlePoints = []
-            const circleNormals = []
-
-            const globalUp = new THREE.Vector3(0, 1, 0)
-            const globalRight = new THREE.Vector3(1, 0, 0)
-
-            let startDirection = new THREE.Vector3()
-
-            if (Math.abs(normal.dot(globalUp)) < 0.99) {
-                startDirection
-                    .copy(globalUp)
-                    .addScaledVector(normal, -globalUp.dot(normal))
-                    .normalize()
-            } else {
-                startDirection
-                    .copy(globalRight)
-                    .addScaledVector(normal, -globalRight.dot(normal))
-                    .normalize()
-            }
-
-            const perpDirection = new THREE.Vector3()
-                .crossVectors(normal, startDirection)
-                .normalize()
-
-            for (let i = 0; i <= segments; i++) {
-                const angle = (i / segments) * Math.PI * 2
-
-                const point = new THREE.Vector3()
-                    .copy(center)
-                    .addScaledVector(startDirection, radius * Math.cos(angle))
-                    .addScaledVector(perpDirection, radius * Math.sin(angle))
-
-                circlePoints.push(point)
-                circleNormals.push(normal.clone())
-            }
-
-            return {
-                circlePoints,
-                circleNormals,
-            }
-        },
-        []
-    )
-
-    const generateSquarePointsWorld = useCallback(
-        (
-            center,
-            normal,
-            radius,
-            cornerRoundness = 2, // 0 = sharp corners, 10 = very rounded
-            { cornerSegments = 8, segments = 64 } = {}
-        ) => {
-            const squarePoints = []
-            const squareNormals = []
-
-            const tempVector = new THREE.Vector3()
-            const tempQuaternion = new THREE.Quaternion()
-
-            const zAxis = new THREE.Vector3(0, 0, 1)
-            tempQuaternion.setFromUnitVectors(zAxis, normal)
-
-            const sideLength = radius * Math.sqrt(2)
-            const halfSide = sideLength / 2
-
-            // If cornerRoundness is 0, create ONLY 4 corner points (sharp edges)
-            if (cornerRoundness === 0) {
-                const sharpCorners = [
-                    { x: halfSide, y: halfSide }, // Top-right
-                    { x: -halfSide, y: halfSide }, // Top-left
-                    { x: -halfSide, y: -halfSide }, // Bottom-left
-                    { x: halfSide, y: -halfSide }, // Bottom-right
-                ]
-
-                // Generate ONLY the 4 corner points
-                sharpCorners.forEach((corner) => {
-                    tempVector.set(corner.x, corner.y, 0)
-                    tempVector.applyQuaternion(tempQuaternion).add(center)
-                    squarePoints.push(tempVector.clone())
-                    squareNormals.push(normal.clone())
-                })
-
-                // Close the loop by duplicating the first point
-                squarePoints.push(squarePoints[0].clone())
-                squareNormals.push(normal.clone())
-
-                return {
-                    squarePoints: squarePoints, // 5 points total (4 corners + 1 closing)
-                    squareNormals: squareNormals,
-                }
-            }
-
-            // Rounded corners (cornerRoundness > 0)
-            const cornerRadiusFactor = (cornerRoundness / 10) * 0.3
-            const cornerRadius = sideLength * cornerRadiusFactor
-            const straightLength = halfSide - cornerRadius
-
-            const corners = [
-                {
-                    x: straightLength,
-                    y: straightLength,
-                    startAngle: 0,
-                    endAngle: Math.PI / 2,
-                },
-                {
-                    x: -straightLength,
-                    y: straightLength,
-                    startAngle: Math.PI / 2,
-                    endAngle: Math.PI,
-                },
-                {
-                    x: -straightLength,
-                    y: -straightLength,
-                    startAngle: Math.PI,
-                    endAngle: Math.PI * 1.5,
-                },
-                {
-                    x: straightLength,
-                    y: -straightLength,
-                    startAngle: Math.PI * 1.5,
-                    endAngle: Math.PI * 2,
-                },
-            ]
-
-            const pointsPerSide = Math.floor(segments / 4)
-            const pointsPerCorner = cornerSegments
-
-            // Generate points for each corner and edge
-            for (let idx = 0; idx < 4; idx++) {
-                const corner = corners[idx]
-                const nextCorner = corners[(idx + 1) % 4]
-
-                // Generate corner arc points
-                for (let i = 0; i < pointsPerCorner; i++) {
-                    const t = i / pointsPerCorner
-                    const angle =
-                        corner.startAngle +
-                        t * (corner.endAngle - corner.startAngle)
-
-                    tempVector.set(
-                        corner.x + cornerRadius * Math.cos(angle),
-                        corner.y + cornerRadius * Math.sin(angle),
-                        0
-                    )
-                    tempVector.applyQuaternion(tempQuaternion).add(center)
-                    squarePoints.push(tempVector.clone())
-                    squareNormals.push(normal.clone())
-                }
-
-                // Calculate edge start and end positions
-                const edgeStart = {
-                    x: corner.x + cornerRadius * Math.cos(corner.endAngle),
-                    y: corner.y + cornerRadius * Math.sin(corner.endAngle),
-                }
-                const edgeEnd = {
-                    x:
-                        nextCorner.x +
-                        cornerRadius * Math.cos(nextCorner.startAngle),
-                    y:
-                        nextCorner.y +
-                        cornerRadius * Math.sin(nextCorner.startAngle),
-                }
-
-                // Generate straight edge points
-                for (let i = 1; i <= pointsPerSide; i++) {
-                    const t = i / pointsPerSide
-
-                    tempVector.set(
-                        edgeStart.x + t * (edgeEnd.x - edgeStart.x),
-                        edgeStart.y + t * (edgeEnd.y - edgeStart.y),
-                        0
-                    )
-                    tempVector.applyQuaternion(tempQuaternion).add(center)
-                    squarePoints.push(tempVector.clone())
-                    squareNormals.push(normal.clone())
-                }
-            }
-
-            // Close the loop
-            squarePoints.push(squarePoints[0].clone())
-            squareNormals.push(normal.clone())
-
-            return {
-                squarePoints: squarePoints,
-                squareNormals: squareNormals,
-            }
-        },
-        []
-    )
-
-    // Semi circle opened arc
-    const generateSemiCircleOpenArcWorld = useCallback(
-        (center, normal, radius, segments = 64) => {
-            const arcPoints = []
-            const arcNormals = []
-
-            const tempVector = new THREE.Vector3()
-            const tempQuaternion = new THREE.Quaternion()
-
-            const zAxis = new THREE.Vector3(0, 0, 1)
-            tempQuaternion.setFromUnitVectors(zAxis, normal)
-
-            // Just the arc, no closing line
-            for (let i = 0; i <= segments; i++) {
-                const angle = Math.PI + (i / segments) * Math.PI // 180° arc
-                tempVector.set(
-                    radius * Math.cos(angle),
-                    radius * Math.sin(angle),
-                    0
-                )
-                tempVector.applyQuaternion(tempQuaternion).add(center)
-                arcPoints.push(tempVector.clone())
-                arcNormals.push(normal.clone())
-            }
-
-            return {
-                arcPoints: arcPoints,
-                arcNormals: arcNormals,
-            }
-        },
-        []
-    )
 
     function createContinuousRibbonGeometry(points, width, normal) {
         if (points.length < 2) return null
@@ -343,110 +127,6 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
         return geometry
     }
 
-    const smoothPoints = useCallback((points, percentage) => {
-        if (percentage === 0 || points.length < 3) return points
-
-        const maxWindowSize = 10
-        const windowSize = Math.ceil((percentage / 100) * maxWindowSize)
-
-        const actualWindowSize = Math.max(
-            1,
-            Math.min(windowSize, Math.floor((points.length - 1) / 2))
-        )
-
-        const smoothed = []
-        for (let i = 0; i < points.length; i++) {
-            const sum = new THREE.Vector3()
-            let count = 0
-
-            for (let j = -actualWindowSize; j <= actualWindowSize; j++) {
-                const index = i + j
-                if (index >= 0 && index < points.length) {
-                    sum.add(points[index])
-                    count++
-                }
-            }
-            smoothed.push(sum.divideScalar(count))
-        }
-        return smoothed
-    }, [])
-
-    const smoothArray = (arr, percentage) => {
-        const maxWindowSize = 10
-        const windowSize = Math.ceil((percentage / 100) * maxWindowSize)
-        const actualWindowSize = Math.max(
-            1,
-            Math.min(windowSize, Math.floor((arr.length - 1) / 2))
-        )
-        const smoothed = []
-
-        for (let i = 0; i < arr.length; i++) {
-            let sum = 0
-            let count = 0
-
-            for (let j = -actualWindowSize; j <= actualWindowSize; j++) {
-                const index = i + j
-                if (index >= 0 && index < arr.length) {
-                    sum += arr[index]
-                    count++
-                }
-            }
-            smoothed.push(sum / count)
-        }
-
-        return smoothed
-    }
-
-    const filterPoints = useCallback((pts, pressures, normals, tolerance) => {
-        if (pts.length < 2)
-            return {
-                filteredPts: pts,
-                filteredPressures: pressures,
-                filteredNormals: normals,
-            }
-
-        const filteredPts = [pts[0]]
-        const filteredPressures = [pressures[0]]
-        const filteredNormals = [normals[0]]
-
-        let lastKeptIndex = 0
-
-        for (let i = 1; i < pts.length; i++) {
-            if (pts[i].distanceTo(pts[lastKeptIndex]) >= tolerance) {
-                filteredPts.push(pts[i])
-                filteredPressures.push(pressures[i])
-                filteredNormals.push(normals[i])
-                lastKeptIndex = i
-            }
-        }
-
-        if (lastKeptIndex !== pts.length - 1) {
-            filteredPts.push(pts[pts.length - 1])
-            filteredPressures.push(pressures[pressures.length - 1])
-            filteredNormals.push(normals[normals.length - 1])
-        }
-
-        return {
-            filteredPts,
-            filteredPressures,
-            filteredNormals,
-        }
-    }, [])
-
-    function getSnappedPoint(origin, target) {
-        const delta = new THREE.Vector3().subVectors(target, origin)
-        const angle = Math.atan2(delta.y, delta.x)
-        const snapIncrement = Math.PI / 4
-        const snappedAngle = Math.round(angle / snapIncrement) * snapIncrement
-        const length = delta.length()
-        const snappedDir = new THREE.Vector3(
-            Math.cos(snappedAngle),
-            Math.sin(snappedAngle),
-            0
-        )
-        return origin.clone().add(snappedDir.multiplyScalar(length))
-    }
-
     function createInitialLineMesh() {
         const maxVertices = MAX_POINTS * 4
         const positions = new Float32Array(maxVertices * 3)
@@ -477,7 +157,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
         })
 
         const mesh = new THREE.Mesh(geometry, material)
-        mesh.userData.type = 'Dynamic_Guide_Line'
+        mesh.userData.type = 'DYNAMIC_GUIDE_LINE'
         scene.add(mesh)
         return mesh
     }
@@ -646,69 +326,68 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
     }
 
     function startDrawing(event) {
-        // console.log('Started drawing,,,')
-        if (!planeRef.current) return
+        if (event.pointerType === pointerType) {
+            if (!planeRef.current) return
 
-        isDrawing = true
-        points = []
-        pressures = []
-        normals = []
+            isDrawing = true
+            points = []
+            pressures = []
+            normals = []
 
-        const { point, normal } = getPlaneIntersection(event)
-        if (!point) return
+            const { point, normal } = getPlaneIntersection(event)
+            if (!point) return
 
-        startPoint = point.clone()
-        currentNormal = normal.clone()
-        currentMesh = createInitialLineMesh()
+            startPoint = point.clone()
+            currentNormal = normal.clone()
+            currentMesh = createInitialLineMesh()
 
-        const pressure = 1.0
+            const pressure = 1.0
 
-        points.push(startPoint.clone())
-        pressures.push(pressure)
-        normals.push(currentNormal)
-
-        if (drawShapeType === 'free_hand') {
-            const secondPoint = new THREE.Vector3()
-                .copy(startPoint)
-                .addScalar(0.001)
-            points.push(secondPoint)
+            points.push(startPoint.clone())
             pressures.push(pressure)
             normals.push(currentNormal)
-        }
 
-        updateLine(currentMesh, points, pressures, normals)
-    }
-
-    function continueDrawing(event) {
-        if (!isDrawing || !planeRef.current) return
-        const { point, normal } = getPlaneIntersection(event)
-        if (!point) return
-
-        const pressure = 1.0
-
-        if (drawShapeType === 'free_hand') {
-            let newPoint = point.clone()
-            const last = points[points.length - 1]
-            if (newPoint.distanceTo(last) < DISTANCE_THRESHOLD) return
-
-            points.push(newPoint)
-            pressures.push(pressure)
-            normals.push(normal)
-
-            if (points.length > MAX_POINTS) {
-                points.shift()
-                pressures.shift()
-                normals.shift()
+            if (drawShapeType === 'free_hand') {
+                const secondPoint = new THREE.Vector3()
+                    .copy(startPoint)
+                    .addScalar(0.001)
+                points.push(secondPoint)
+                pressures.push(pressure)
+                normals.push(currentNormal)
             }
 
             updateLine(currentMesh, points, pressures, normals)
-        } else if (drawShapeType === 'straight') {
-            if (!startPoint || !currentNormal) return
+        }
+    }
 
-            // Snap point to constrained angle (max 45°)
-            // const snappedPoint = getSnappedPoint(startPoint, point, 1) // 45 is max angle for snapping
-            const { snappedEnd, interpolatedPoints } =
-                getSnappedLinePointsInPlane({
+    function continueDrawing(event) {
+        if (event.pointerType === pointerType) {
+            if (!isDrawing || !planeRef.current) return
+            const { point, normal } = getPlaneIntersection(event)
+            if (!point) return
+
+            const pressure = 1.0
+
+            if (drawShapeType === 'free_hand') {
+                let newPoint = point.clone()
+                const last = points[points.length - 1]
+                if (newPoint.distanceTo(last) < DISTANCE_THRESHOLD) return
+
+                points.push(newPoint)
+                pressures.push(pressure)
+                normals.push(normal)
+
+                if (points.length > MAX_POINTS) {
+                    points.shift()
+                    pressures.shift()
+                    normals.shift()
+                }
+
+                updateLine(currentMesh, points, pressures, normals)
+            } else if (drawShapeType === 'straight') {
+                if (!startPoint || !currentNormal) return
+
+                const { snappedEnd } = getSnappedLinePointsInPlane({
                     startPoint,
                     currentPoint: point,
                     normal,
@@ -717,73 +396,53 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
                     pointDensity: 0.05,
                 })
 
-            // Only two points: start and snapped end
-            points.length = 0
-            points.push(startPoint.clone())
-            points.push(snappedEnd.clone())
+                points.length = 0
+                points.push(startPoint.clone())
+                points.push(snappedEnd.clone())
 
-            pressures.length = 0
-            pressures.push(pressure)
-            pressures.push(pressure)
+                pressures.length = 0
+                pressures.push(pressure)
+                pressures.push(pressure)
 
-            normals.length = 0
-            normals.push(currentNormal.clone())
-            normals.push(normal.clone())
+                normals.length = 0
+                normals.push(currentNormal.clone())
+                normals.push(normal.clone())
 
-            updateLine(currentMesh, points, pressures, normals)
-        } else if (drawShapeType === 'circle') {
-            if (!startPoint || !currentNormal) return
+                updateLine(currentMesh, points, pressures, normals)
+            } else if (drawShapeType === 'circle') {
+                if (!startPoint || !currentNormal) return
 
-            const radius = startPoint.distanceTo(point)
-            const pressure = 1.0
+                const radius = startPoint.distanceTo(point)
+                const pressure = 1.0
 
-            const { circlePoints, circleNormals } = generateCirclePointsWorld(
-                startPoint,
-                currentNormal,
-                radius
-            )
-            const circlePressures = Array(circlePoints.length).fill(pressure)
+                const { circlePoints, circleNormals } =
+                    generateCirclePointsWorld(startPoint, currentNormal, radius)
+                const circlePressures = Array(circlePoints.length).fill(
+                    pressure
+                )
 
-            updateLine(
-                currentMesh,
-                circlePoints,
-                circlePressures,
-                circleNormals
-            )
-        } else if (drawShapeType === 'square') {
-            if (!startPoint || !currentNormal) return
+                updateLine(
+                    currentMesh,
+                    circlePoints,
+                    circlePressures,
+                    circleNormals
+                )
+            } else if (drawShapeType === 'arc') {
+                if (!startPoint || !currentNormal) return
 
-            const radius = startPoint.distanceTo(point)
-            const pressure = 1.0
+                const radius = startPoint.distanceTo(point)
+                const pressure = 1.0
 
-            const { squarePoints, squareNormals } = generateSquarePointsWorld(
-                startPoint,
-                currentNormal,
-                radius
-            )
-            // console.log({ circlePoints })
-            const squarePressures = Array(squarePoints.length).fill(pressure)
+                const { arcPoints, arcNormals } =
+                    generateSemiCircleOpenArcWorld(
+                        startPoint,
+                        currentNormal,
+                        radius
+                    )
+                const arcPressures = Array(arcPoints.length).fill(pressure)
 
-            updateLine(
-                currentMesh,
-                squarePoints,
-                squarePressures,
-                squareNormals
-            )
-        } else if (drawShapeType === 'arc') {
-            if (!startPoint || !currentNormal) return
-
-            const radius = startPoint.distanceTo(point)
-            const pressure = 1.0
-
-            const { arcPoints, arcNormals } = generateSemiCircleOpenArcWorld(
-                startPoint,
-                currentNormal,
-                radius
-            )
-            const arcPressures = Array(arcPoints.length).fill(pressure)
-
-            updateLine(currentMesh, arcPoints, arcPressures, arcNormals)
+                updateLine(currentMesh, arcPoints, arcPressures, arcNormals)
+            }
         }
     }
 
@@ -828,7 +487,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
                     ribbonMaterial
                 )
 
-                ribbonMesh.userData.type = 'OG_Guide_Plane'
+                ribbonMesh.userData.type = 'OG_GUIDE_PLANE'
                 scene.add(ribbonMesh)
 
                 scene.remove(currentMesh)
@@ -885,69 +544,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
                     ribbonGeometry,
                     ribbonMaterial
                 )
-                ribbonMesh.userData.type = 'OG_Guide_Plane'
-                scene.add(ribbonMesh)
-
-                scene.remove(currentMesh)
-                currentMesh.geometry.dispose()
-                currentMesh.material.dispose()
-
-                if (onDrawingFinished && ribbonMesh) {
-                    onDrawingFinished(ribbonMesh)
-                }
-            }
-        } else if (drawShapeType === 'square') {
-            const lastPoint =
-                getPlaneIntersection(event)?.point || points[points.length - 1]
-            const radius = startPoint.distanceTo(lastPoint)
-
-            const { squarePoints, squareNormals } = generateSquarePointsWorld(
-                startPoint,
-                currentNormal,
-                radius
-            )
-
-            const squarePressures = Array(squarePoints.length).fill(
-                pressures[0] || 1.0
-            )
-
-            updateLine(
-                currentMesh,
-                squarePoints,
-                squarePressures,
-                squareNormals
-            )
-
-            let intersection = getPlaneIntersection(event)
-            const planeNormal = intersection.normal
-            const planeWidth = 100
-
-            setOgGuidePoints(squarePoints)
-            setOgGuideNormals(squareNormals)
-
-            const ribbonGeometry = createContinuousRibbonGeometry(
-                squarePoints,
-                planeWidth,
-                planeNormal
-            )
-
-            if (ribbonGeometry) {
-                const ribbonMaterial = new THREE.MeshBasicMaterial({
-                    color: color,
-                    wireframe: false,
-                    transparent: true,
-                    opacity: 0.25,
-                    side: THREE.DoubleSide,
-                    forceSinglePass: true,
-                    depthTest: true,
-                    depthWrite: true,
-                })
-
-                const ribbonMesh = new THREE.Mesh(
-                    ribbonGeometry,
-                    ribbonMaterial
-                )
-                ribbonMesh.userData.type = 'OG_Guide_Plane'
+                ribbonMesh.userData.type = 'OG_GUIDE_PLANE'
                 scene.add(ribbonMesh)
 
                 scene.remove(currentMesh)
@@ -1004,7 +601,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
                     ribbonGeometry,
                     ribbonMaterial
                 )
-                ribbonMesh.userData.type = 'OG_Guide_Plane'
+                ribbonMesh.userData.type = 'OG_GUIDE_PLANE'
                 scene.add(ribbonMesh)
 
                 scene.remove(currentMesh)
@@ -1063,71 +660,6 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
             planeRef.current.rotation.copy(camera.rotation)
         })
         return null
-    }
-
-    function getSnappedLinePointsInPlane({
-        startPoint,
-        currentPoint,
-        normal,
-        camera,
-        snapAngle = 45,
-        pointDensity = 0.1,
-    }) {
-        const delta = new THREE.Vector3().subVectors(currentPoint, startPoint)
-        const length = delta.length()
-
-        const planeZ = normal.clone()
-
-        const tempX = new THREE.Vector3().crossVectors(planeZ, camera.up)
-        if (tempX.lengthSq() < 0.0001) {
-            tempX
-                .set(1, 0, 0)
-                .applyQuaternion(
-                    new THREE.Quaternion().setFromUnitVectors(
-                        new THREE.Vector3(0, 0, 1),
-                        planeZ
-                    )
-                )
-                .normalize()
-        }
-        const planeX = tempX.normalize()
-        const planeY = new THREE.Vector3()
-            .crossVectors(planeX, planeZ)
-            .normalize()
-
-        const localDeltaX = delta.dot(planeX)
-        const localDeltaY = delta.dot(planeY)
-
-        let angleRad = Math.atan2(localDeltaY, localDeltaX)
-        const angleDeg = THREE.MathUtils.radToDeg(angleRad)
-
-        const snappedDeg = Math.round(angleDeg / snapAngle) * snapAngle
-        const snappedRad = THREE.MathUtils.degToRad(snappedDeg)
-
-        const snappedDirection = new THREE.Vector3()
-            .addScaledVector(planeX, Math.cos(snappedRad))
-            .addScaledVector(planeY, Math.sin(snappedRad))
-            .normalize()
-
-        const snappedEnd = startPoint
-            .clone()
-            .addScaledVector(snappedDirection, length)
-
-        // Interpolate between startPoint and snappedEnd
-        const interpolatedPoints = []
-        const numSegments = Math.max(1, Math.ceil(length / pointDensity))
-        for (let i = 0; i <= numSegments; i++) {
-            const t = i / numSegments
-            const interpolatedPoint = new THREE.Vector3()
-                .copy(startPoint)
-                .lerp(snappedEnd, t)
-            interpolatedPoints.push(interpolatedPoint)
-        }
-
-        return {
-            snappedEnd,
-            interpolatedPoints,
-        }
     }
 
     return (

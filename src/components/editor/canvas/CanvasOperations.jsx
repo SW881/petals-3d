@@ -1,41 +1,48 @@
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 
 import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
-import { canvasViewStore } from '../../../hooks/useCanvasViewStore'
 import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
 
+import DrawLine from './DrawLine'
 import EraseLine from './EraseLine'
-import DrawLine52 from './DrawLine52'
 import TransformLine from './TransformLine'
-import TransfromGuide from './TransformGuide'
-import LoftGuidePlane18 from './LoftGuidePlane18'
+import LoftGuidePlane from './LoftGuidePlane'
+import TransformGuide from './TransformGuide'
 import DynamicGuidePlane from './DynamicGuidePlane'
 import DynamicBendGuidePlane from './DynamicBendGuidePlane'
 
-export default function CanvasOperations({ id }) {
+import { eraseLineType, guideObjectType } from '../../../config/objectsConfig'
+import { generateScene } from '../../../helpers/drawHelper'
+
+export default function CanvasOperations() {
     const { scene, gl } = useThree()
 
     const {
+        setPlane,
         eraseGuide,
         selectLines,
         selectGuide,
+        highlighted,
         setDrawGuide,
         setEraseGuide,
         bendPlaneGuide,
+        setHighlighted,
         loftGuidePlane,
         setBendPlaneGuide,
-        dynamicDrawingPlaneMesh,
-        setDynamicDrawingPlaneMesh,
-        setPlane,
-        highlighted,
-        setHighlighted,
         setLoftGuidePlane,
         setGenerateLoftSurface,
+        dynamicDrawingPlaneMesh,
+        setDynamicDrawingPlaneMesh,
     } = canvasDrawStore((state) => state)
 
     const { setActiveScene, groupData } = canvasRenderStore((state) => state)
+
+    //  // Rebuild scene
+    // useEffect(() => {
+    //     generateScene(scene, groupData)
+    // }, [])
 
     const handleGuideDrawingFinished = (guideMesh) => {
         setDrawGuide(false)
@@ -57,17 +64,15 @@ export default function CanvasOperations({ id }) {
         setActiveScene(scene)
     }, [])
 
-    function ClearGuidePlanes() {
+    function ClearRemovedObjects() {
         useEffect(() => {
             const meshes = []
             const selectedObjects = Array.from(highlighted)
             scene.traverse((child) => {
                 if (
-                    child.userData?.type === 'Bend_Guide_Plane' ||
-                    child.userData?.type === 'tranfromer' ||
-                    child.userData?.type === 'OG_Guide_Plane' ||
-                    child.userData?.type === 'Dynamic_Guide_Line' ||
-                    child.userData?.type === 'Loft_Surface'
+                    (eraseLineType.includes(child.userData?.type) &&
+                        child.userData?.is_deleted) ||
+                    guideObjectType.includes(child.userData?.type)
                 ) {
                     meshes.push(child)
                 }
@@ -89,7 +94,6 @@ export default function CanvasOperations({ id }) {
             })
             gl.info.autoReset = false
             gl.info.reset()
-            setEraseGuide(false)
 
             selectedObjects.forEach((obj) => {
                 let baseColor = new THREE.Color(obj.userData.color)
@@ -107,6 +111,8 @@ export default function CanvasOperations({ id }) {
             })
 
             setHighlighted([])
+
+            setEraseGuide(false)
         }, [scene, gl])
         return null
     }
@@ -116,15 +122,18 @@ export default function CanvasOperations({ id }) {
     )
 
     useEffect(() => {
-        // console.log('Updating visible groups...')
         scene.traverse((child) => {
             if (
-                (child.userData?.type === 'Line' ||
-                    child.userData.type === 'Merged_Line') &&
+                eraseLineType.includes(child.userData?.type) &&
                 child.userData.group_id
             ) {
                 const group = groupsByUuid.get(child.userData.group_id)
-                child.visible = group.visible
+                if (group && !child.userData.is_deleted) {
+                    child.visible = group.visible
+                    group.objects.map((obj) => {
+                        return { ...obj, ...child.userData }
+                    })
+                }
             }
         })
     }, [groupData])
@@ -138,14 +147,15 @@ export default function CanvasOperations({ id }) {
                 />
             )}
 
-            <LoftGuidePlane18 onDrawingFinished={handleGuideDrawingFinished} />
+            <LoftGuidePlane onDrawingFinished={handleGuideDrawingFinished} />
 
-            <DrawLine52 id={id} />
+            {selectGuide && <TransformGuide />}
 
-            {eraseGuide && <ClearGuidePlanes />}
-            <EraseLine id={id} />
-            {selectLines && <TransformLine id={id} />}
-            {selectGuide && <TransfromGuide />}
+            {eraseGuide && <ClearRemovedObjects />}
+
+            <DrawLine />
+            {selectLines && <TransformLine />}
+            <EraseLine />
         </>
     )
 }

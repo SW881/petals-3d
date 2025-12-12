@@ -8,12 +8,10 @@ import { dashboardStore } from '../../../../hooks/useDashboardStore'
 import { canvasRenderStore } from '../../../../hooks/useRenderSceneStore'
 
 const AddNewGroups = () => {
-    const { setNewGroupModal } = dashboardStore((state) => state)
-    const [animateOut, setAnimateOut] = useState(false)
-    const [groupName, setGroupName] = useState('')
     const [loading, setLoading] = useState(false)
-
-    const { session } = dashboardStore((state) => state)
+    const [groupName, setGroupName] = useState('')
+    const [animateOut, setAnimateOut] = useState(false)
+    const { setNewGroupModal } = dashboardStore((state) => state)
 
     const { resetSelectedGroups, groupData, addNewGroup, sortGroupsByName } =
         canvasRenderStore((state) => state)

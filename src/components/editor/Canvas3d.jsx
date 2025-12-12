@@ -1,31 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react'
-import * as THREE from 'three/webgpu' // The WebGPU build
+import * as THREE from 'three'
 import { Canvas, useFrame, useThree, extend } from '@react-three/fiber'
 import {
     GizmoHelper,
-    GizmoViewport,
     OrbitControls,
-    OrthographicCamera,
+    GizmoViewport,
     PerspectiveCamera,
-    Stats,
+    OrthographicCamera,
 } from '@react-three/drei'
 import { Perf } from 'r3f-perf'
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
 
 extend(THREE)
-
-import { EffectComposer, Bloom } from '@react-three/postprocessing'
 
 import { canvasViewStore } from '../../hooks/useCanvasViewStore'
 import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
 
 import CanvasOperations from './canvas/CanvasOperations'
 
-const Canvas3d = ({ id }) => {
+const Canvas3d = () => {
     const {
         orbitalLock,
-        dprValue,
         isOrthographic,
-        setIsOrthographic,
         cameraFov,
         gridPlaneX,
         gridPlaneY,
@@ -48,46 +44,33 @@ const Canvas3d = ({ id }) => {
         const { camera } = useThree()
         const target = new THREE.Vector3(0, 0, 0)
 
-        // Current vector from camera to target
         const camToTarget = new THREE.Vector3()
         camToTarget.subVectors(camera.position, target)
 
-        // Current zoom distance (length)
         const zoomDist = camToTarget.length()
 
-        // Direction vector normalized
         const direction = camToTarget.clone().normalize()
 
-        // Absolute direction values
         const absDir = {
             x: Math.abs(direction.x),
             y: Math.abs(direction.y),
             z: Math.abs(direction.z),
         }
 
-        // Decide dominant axis and sign but keep the zoom distance same
         let snapPosition = new THREE.Vector3()
 
         if (absDir.x > absDir.y && absDir.x > absDir.z) {
-            // Snap along X axis
             snapPosition.set(direction.x > 0 ? 1 : -1, 0, 0)
         } else if (absDir.y > absDir.x && absDir.y > absDir.z) {
-            // Snap along Y axis
             snapPosition.set(0, direction.y > 0 ? 1 : -1, 0)
         } else {
-            // Snap along Z axis
             snapPosition.set(0, 0, direction.z > 0 ? 1 : -1)
         }
 
-        // Scale snapPosition to the original zoom distance to keep same zoom
         snapPosition.multiplyScalar(zoomDist)
 
-        // Place camera position relative to target
         camera.position.copy(target).add(snapPosition)
 
-        // Do NOT change camera rotation: keep current rotation so no lookAt call
-
-        // Update controls target
         if (orbitControlsRef.current) {
             orbitControlsRef.current.target.copy(target)
             orbitControlsRef.current.update()
@@ -101,7 +84,6 @@ const Canvas3d = ({ id }) => {
         const fovRef = useRef(camera.fov)
 
         useFrame(() => {
-            // Lerp current fov toward target
             fovRef.current += (cameraFov - fovRef.current) * 0.9
             camera.fov = fovRef.current
             camera.updateProjectionMatrix()
@@ -123,7 +105,7 @@ const Canvas3d = ({ id }) => {
             gl.autoClear = false
         }, [camera, gl])
 
-        if (!ready) return null // ⏸️ wait one frame
+        if (!ready) return null
 
         return (
             <EffectComposer multisampling={8} autoClear={false}>
@@ -138,20 +120,14 @@ const Canvas3d = ({ id }) => {
         useEffect(() => {
             const sampleObjects = []
 
-            // Traverse the whole scene
             scene.traverse((child) => {
-                // if (child.userData?.type === 'Line') {
                 child.visible = false
-                // child.castShadow = true
-                // child.receiveShadow = true
                 sampleObjects.push(child)
-                // }
             })
 
-            // Sequential visibility with delay
             const showSequentially = async () => {
                 for (const obj of sampleObjects) {
-                    await new Promise((resolve) => setTimeout(resolve, 10)) // 1 sec
+                    await new Promise((resolve) => setTimeout(resolve, 100))
                     obj.visible = true
                 }
 
@@ -163,16 +139,6 @@ const Canvas3d = ({ id }) => {
         return null
     }
 
-    const createWebGPURenderer = async (props) => {
-        const renderer = new THREE.WebGPURenderer({
-            ...props,
-            forceWebGL: true,
-        })
-        await renderer.init()
-        return renderer
-    }
-
-    // Hide lines
     return (
         <>
             <Canvas
@@ -183,7 +149,7 @@ const Canvas3d = ({ id }) => {
                 onDoubleClick={(e) => {
                     setSnaping(true)
                 }}
-                onChange={(e) => camera.updateProjectionMatrix()}
+                // onChange={(e) => camera.updateProjectionMatrix()}
                 dpr={1}
             >
                 <directionalLight
@@ -214,7 +180,7 @@ const Canvas3d = ({ id }) => {
                 )}
 
                 {snaping && <SnapCameraPositionAndRotation />}
-                {/* <Perf position="bottom-right" /> */}
+                <Perf position="bottom-right" />
 
                 {(gridPlaneX || gridPlaneY || gridPlaneZ) && (
                     <group>
@@ -242,11 +208,13 @@ const Canvas3d = ({ id }) => {
                     </group>
                 )}
                 <ambientLight intensity={10} color="#FFFFFF" />
+
                 <SmoothFOV />
+
                 <OrbitControls
                     ref={orbitControlsRef}
-                    minDistance={20} // how close user can zoom in
-                    maxDistance={150} // how far user can zoom out
+                    minDistance={20}
+                    maxDistance={150}
                     enabled={true}
                     enableRotate={!orbitalLock}
                     enablePan={!orbitalLock}
@@ -255,22 +223,21 @@ const Canvas3d = ({ id }) => {
                     maxZoom={200}
                     minZoom={10}
                 />
-                <CanvasOperations id={id} />
+                <CanvasOperations />
 
-                {/* <GizmoHelper
-                    alignment="center-right" // Position the gizmo in the bottom-right corner
-                    margin={[80, 80]} // Add margin from the corner
-                >
+                {/* <GizmoHelper alignment="bottom-center" margin={[60, 60]}>
                     <GizmoViewport
-                        axisColors={['red', 'green', 'blue']} // Set custom colors for the axes
-                        labelColor="black" // Set the label color for "X", "Y", "Z"
+                        axisColors={['#DE3163', '#50C878', '#0096FF']}
+                        labelColor="white"
                     />
                 </GizmoHelper> */}
+
                 {sequentialLoading && (
                     <SequentialLoader
                         onComplete={() => setSequentialLoading(false)}
                     />
                 )}
+
                 {postProcess && <SceneComposer />}
             </Canvas>
         </>

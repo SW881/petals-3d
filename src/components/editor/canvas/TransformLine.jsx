@@ -1,19 +1,21 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { useFrame, useThree } from '@react-three/fiber'
 import { TransformControls } from 'three/addons/controls/TransformControls.js'
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
+import { saveGroupToIndexDB } from '../../../db/storage'
 import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
 import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
 
-const TransformLine = ({ id }) => {
+const TransformLine = () => {
     const { camera, mouse, raycaster, scene, gl, invalidate } = useThree()
     const {
         copy,
         setCopy,
         axisMode,
         lineColor,
+        pointerType,
         strokeColor,
         selectLines,
         strokeOpacity,
@@ -23,7 +25,9 @@ const TransformLine = ({ id }) => {
         setMergeGeometries,
         activeMaterialType,
     } = canvasDrawStore((state) => state)
-    const { activeGroup, setActiveScene } = canvasRenderStore((state) => state)
+    const { activeGroup, setActiveScene, setGroupData } = canvasRenderStore(
+        (state) => state
+    )
 
     const transformRef = useRef()
     const dummyTarget = useRef(new THREE.Group())
@@ -62,28 +66,23 @@ const TransformLine = ({ id }) => {
         object.scale.copy(tempScale)
     }
 
-    // Initialize TransformControls once
     useEffect(() => {
         const controls = new TransformControls(camera, gl.domElement)
         controls.setSpace(axisMode)
         controls.setMode(transformMode)
         transformRef.current = controls
 
-        // CUSTOMIZE COLORS
         controls.setColors({
-            x: '#ff0000', // Red for X axis
-            y: '#00ff00', // Green for Y axis
-            z: '#0000ff', // Blue for Z axis
-            active: '#FF5F1F', // Yellow when dragging
+            x: '#ff0000',
+            y: '#00ff00',
+            z: '#0000ff',
+            active: '#FF5F1F',
         })
 
-        // HIDE PLANES AND EXTRA ELEMENTS TO REDUCE DRAW CALLS
-        // Hide the XY, YZ, XZ plane helpers
-        controls.showX = true // Keep X arrow
-        controls.showY = true // Keep Y arrow
-        controls.showZ = true // Keep Z arrow
+        controls.showX = true
+        controls.showY = true
+        controls.showZ = true
 
-        // Access the gizmo helper and hide specific elements
         const helper = controls._gizmo.gizmo.translate.children
 
         helper.forEach((child) => {
@@ -102,14 +101,14 @@ const TransformLine = ({ id }) => {
             }
         })
 
-        // Add event listeners
         const onDragStart = () => {
             isTransformDragging.current = true
         }
 
-        const onDragEnd = () => {
+        const onDragEnd = async () => {
+            console.log('Drag Ended...')
             isTransformDragging.current = false
-            updateLineWorldPoints3()
+            await updateLineWorldPoints()
         }
 
         const onDraggingChanged = (e) => {
@@ -120,7 +119,6 @@ const TransformLine = ({ id }) => {
         controls.addEventListener('mouseUp', onDragEnd)
         controls.addEventListener('dragging-changed', onDraggingChanged)
 
-        // Cleanup
         return () => {
             controls.removeEventListener('mouseDown', onDragStart)
             controls.removeEventListener('mouseUp', onDragEnd)
@@ -156,12 +154,10 @@ const TransformLine = ({ id }) => {
         }
     }, [camera, gl, scene])
 
-    // Update visibility when mode changes
     useEffect(() => {
         if (transformRef.current) {
             transformRef.current.setMode(transformMode)
 
-            // Re-hide planes after mode change
             const helper = transformRef.current.getHelper()
             const gizmoIndex =
                 transformMode === 'translate'
@@ -191,14 +187,12 @@ const TransformLine = ({ id }) => {
         }
     }, [transformMode])
 
-    // Attach/detach controls based on attachedGizmos state
     useEffect(() => {
         const controls = transformRef.current
         if (!controls) return
 
         if (attachedGizmos && dummyTarget.current) {
             controls.attach(dummyTarget.current)
-            // Use getHelper() instead of adding controls directly
             const helper = controls.getHelper()
             if (!scene.children.includes(helper)) {
                 scene.add(helper)
@@ -212,7 +206,6 @@ const TransformLine = ({ id }) => {
         }
     }, [attachedGizmos, scene])
 
-    // Update transform mode and space when they change
     useEffect(() => {
         if (transformRef.current) {
             transformRef.current.setMode(transformMode)
@@ -265,68 +258,71 @@ const TransformLine = ({ id }) => {
         return box.getCenter(center)
     }
 
-    const onPointerDownWindow = (event) => {
-        if (
-            event.target.localName === 'canvas' &&
-            !isTransformDragging.current &&
-            !attachedGizmos
-        ) {
-            setDraggingSelection(true)
-        }
-    }
-
-    const onPointerUpWindow = () => {
-        if (
-            !draggingSelection ||
-            isTransformDragging.current ||
-            attachedGizmos
-        ) {
-            setDraggingSelection(false)
-            return
-        }
-
-        setDraggingSelection(false)
-
-        const selectedObjects = Array.from(highlighted.current)
-        if (selectedObjects.length === 0) return
-
-        const center = computeCenter(selectedObjects)
-        selectedCenter.current.copy(center)
-        dummyTarget.current.position.copy(center)
-
-        if (!scene.children.includes(dummyTarget.current)) {
-            scene.add(dummyTarget.current)
-        }
-
-        selectedObjects.forEach((obj) => {
-            toLocalSpace(obj, dummyTarget.current)
-            dummyTarget.current.add(obj)
-            let baseColor = new THREE.Color(obj.userData.color)
-            const colors = obj.geometry.attributes.color
-            for (let i = 0; i < colors.count; i++) {
-                colors.setXYZW(
-                    i,
-                    baseColor.r,
-                    baseColor.g,
-                    baseColor.b,
-                    obj.userData.opacity
-                )
-            }
-            colors.needsUpdate = true
-        })
-
-        invalidate() // Add this
-        setAttachedGizmos(true)
-    }
-
     useEffect(() => {
+        const onPointerDownWindow = (event) => {
+            if (event.pointerType === pointerType) {
+                if (
+                    selectLines &&
+                    event.target.localName === 'canvas' &&
+                    !isTransformDragging.current &&
+                    !attachedGizmos
+                ) {
+                    setDraggingSelection(true)
+                }
+            }
+        }
+
+        const onPointerUpWindow = () => {
+            if (
+                !draggingSelection ||
+                isTransformDragging.current ||
+                attachedGizmos
+            ) {
+                setDraggingSelection(false)
+                return
+            }
+
+            setDraggingSelection(false)
+
+            const selectedObjects = Array.from(highlighted.current)
+            if (selectedObjects.length === 0) return
+
+            const center = computeCenter(selectedObjects)
+            selectedCenter.current.copy(center)
+            dummyTarget.current.position.copy(center)
+
+            if (!scene.children.includes(dummyTarget.current)) {
+                scene.add(dummyTarget.current)
+            }
+
+            selectedObjects.forEach((obj) => {
+                toLocalSpace(obj, dummyTarget.current)
+                dummyTarget.current.add(obj)
+                let baseColor = new THREE.Color(obj.userData.color)
+                const colors = obj.geometry.attributes.color
+                for (let i = 0; i < colors.count; i++) {
+                    colors.setXYZW(
+                        i,
+                        baseColor.r,
+                        baseColor.g,
+                        baseColor.b,
+                        obj.userData.opacity
+                    )
+                }
+                colors.needsUpdate = true
+            })
+
+            invalidate()
+            setAttachedGizmos(true)
+        }
+
         window.addEventListener('pointerdown', onPointerDownWindow)
         window.addEventListener('pointerup', onPointerUpWindow)
         return () => {
             window.removeEventListener('pointerdown', onPointerDownWindow)
             window.removeEventListener('pointerup', onPointerUpWindow)
         }
-    }, [draggingSelection, attachedGizmos])
+    }, [draggingSelection, attachedGizmos, selectLines])
 
     useFrame(() => {
         if (!draggingSelection || attachedGizmos) return
@@ -335,12 +331,12 @@ const TransformLine = ({ id }) => {
         const objectsToTest = scene.children.filter(
             (obj) =>
                 obj.isMesh &&
-                obj.userData?.group_id === activeGroup &&
-                (obj.userData?.type === 'Line' ||
-                    obj.userData?.type === 'Merged_Line' ||
-                    obj.userData?.type === 'Loft_Surface' ||
-                    obj.userData?.type === 'Bend_Guide_Plane' ||
-                    obj.userData?.type === 'OG_Guide_Plane')
+                obj.userData?.group_id === activeGroup.uuid &&
+                (obj.userData?.type === 'LINE' ||
+                    obj.userData?.type === 'MERGED_LINE' ||
+                    obj.userData?.type === 'LOFT_SURFACE' ||
+                    obj.userData?.type === 'BEND_GUIDE_PLANE' ||
+                    obj.userData?.type === 'OG_GUIDE_PLANE')
         )
 
         const intersects = raycaster.intersectObjects(objectsToTest, true)
@@ -373,17 +369,16 @@ const TransformLine = ({ id }) => {
 
     useEffect(() => {
         if (dummyTarget.current?.children.length > 0) {
-            const newColor = new THREE.Color(lineColor) // white
+            const newColor = new THREE.Color(lineColor)
 
             dummyTarget.current.children.forEach((obj) => {
                 if (
                     obj.isMesh &&
-                    obj.userData?.group_id === activeGroup &&
-                    (obj.userData?.type === 'Line' ||
-                        obj.userData?.type === 'Merged_Line' ||
-                        obj.userData?.type === 'Loft_Surface')
+                    obj.userData?.group_id === activeGroup.uuid &&
+                    (obj.userData?.type === 'LINE' ||
+                        obj.userData?.type === 'MERGED_LINE' ||
+                        obj.userData?.type === 'LOFT_SURFACE')
                 ) {
-                    // Update userData.color to the new color
                     obj.userData.color = lineColor
 
                     const colors = obj.geometry.attributes.color
@@ -400,9 +395,14 @@ const TransformLine = ({ id }) => {
                 }
             })
 
+            // if (highlighted.current.size >= 1) {
+            //     setGroupData([...canvasRenderStore.getState().groupData])
+            //     saveGroupToIndexDB(canvasRenderStore.getState().groupData)
+            // }
+
             invalidate()
         }
-    }, [lineColor, invalidate])
+    }, [lineColor, selectLines, invalidate])
 
     useEffect(() => {
         if (dummyTarget.current && copy && !isCopying.current) {
@@ -425,10 +425,10 @@ const TransformLine = ({ id }) => {
                 return
             }
 
+            let clGroup = []
             const clones = originalObjects.map((original) => {
                 const clone = original.clone()
 
-                // Deep clone geometry so vertex colors can be updated independently
                 clone.geometry = original.geometry.clone()
 
                 if (Array.isArray(original.material)) {
@@ -458,6 +458,7 @@ const TransformLine = ({ id }) => {
 
                 clone.userData = { ...original.userData }
                 clone.userData.uuid = clone.uuid
+                clGroup.push(clone.userData)
                 return clone
             })
 
@@ -469,13 +470,19 @@ const TransformLine = ({ id }) => {
                 toLocalSpace(clone, dummyTarget.current)
                 dummyTarget.current.add(clone)
             })
+            console.log({ clones })
 
             setAttachedGizmos(true)
             setCopy(false)
             isCopying.current = false
             setActiveScene(scene)
+
+            activeGroup.objects.push(...clGroup)
+
+            setGroupData([...canvasRenderStore.getState().groupData])
+            // saveGroupToIndexDB(canvasRenderStore.getState().groupData)
         }
-    }, [copy, scene, setAttachedGizmos, setCopy, setActiveScene])
+    }, [copy, scene, selectLines, setAttachedGizmos, setCopy, setActiveScene])
 
     useEffect(() => {
         if (dummyTarget.current && mergeGeometries && !isMerging.current) {
@@ -501,8 +508,8 @@ const TransformLine = ({ id }) => {
 
                 const objData = mesh.userData
                 if (
-                    objData.type === 'Line' &&
-                    objData.group_id === activeGroup
+                    objData.type === 'LINE' &&
+                    objData.group_id === activeGroup.uuid
                 ) {
                     lines = [...lines, objData]
                     objData.merged = true
@@ -540,7 +547,7 @@ const TransformLine = ({ id }) => {
 
             if (!mergedGeometry.attributes.color) {
                 const count = mergedGeometry.attributes.position.count
-                const colors = new Float32Array(count * 4) // RGBA
+                const colors = new Float32Array(count * 4)
 
                 const strokeColorObj = new THREE.Color(strokeColor)
                 for (let i = 0; i < count; i++) {
@@ -610,27 +617,23 @@ const TransformLine = ({ id }) => {
             combinedMesh.geometry.computeBoundingSphere()
 
             combinedMesh.userData = {
-                type: 'Merged_Line',
-                note_id: id,
+                type: 'MERGED_LINE',
                 is_mirror: false,
                 mirror_mode: 'NA',
                 color: strokeColor,
                 opacity: strokeOpacity,
                 uuid: combinedMesh.uuid,
-                group_id: activeGroup,
+                group_id: activeGroup.uuid,
                 position: { x: 0, y: 0, z: 0 },
                 rotation: { x: 0, y: 0, z: 0, w: 1 },
                 scale: { x: 1, y: 1, z: 1 },
             }
 
-            // 2) Add merged mesh to scene (already in world space)
             scene.add(combinedMesh)
 
-            // 3) Clear dummy and detach gizmos
             resetDummyTarget()
             setAttachedGizmos(false)
 
-            // 4) Clear merging flags
             setMergeGeometries(false)
             isMerging.current = false
             setActiveScene(scene)
@@ -644,27 +647,58 @@ const TransformLine = ({ id }) => {
         resetDummyTarget,
     ])
 
-    const updateLineWorldPoints3 = () => {
+    const updateLineWorldPoints = () => {
+        console.log('Updating Lines Data...')
         dummyTarget.current.children.forEach((lineObj) => {
-            if (lineObj.type === 'Mesh' && lineObj.userData.type === 'Line') {
+            if (lineObj.type === 'Mesh' && lineObj.userData.type === 'LINE') {
                 lineObj.updateMatrixWorld(true)
 
                 const localPoints = lineObj.userData.loft_points
-
                 if (!localPoints || localPoints.length === 0) {
                     console.warn('No loft_points found on line object')
                     return
                 }
-
-                // Transform local points to world space
-                const worldPoints = localPoints.map((localPt) => {
-                    return localPt.clone().applyMatrix4(lineObj.matrixWorld)
-                })
-
-                // Update the world-space loft points
+                const worldPoints = localPoints.map((localPt) =>
+                    localPt.clone().applyMatrix4(lineObj.matrixWorld)
+                )
                 lineObj.userData.loft_points = worldPoints
+
+                const lineUuid = lineObj.userData.uuid
+
+                const targetGroup = canvasRenderStore
+                    .getState()
+                    .groupData.find((g) => g.uuid === activeGroup.uuid)
+                const targetLineData = targetGroup?.objects.find(
+                    (obj) => obj.uuid === lineUuid
+                )
+
+                if (targetLineData) {
+                    targetLineData.position = {
+                        x: lineObj.position.x,
+                        y: lineObj.position.y,
+                        z: lineObj.position.z,
+                    }
+                    targetLineData.rotation = {
+                        x: lineObj.rotation.x,
+                        y: lineObj.rotation.y,
+                        z: lineObj.rotation.z,
+                        w: lineObj.quaternion.w,
+                    }
+                    targetLineData.scale = {
+                        x: lineObj.scale.x,
+                        y: lineObj.scale.y,
+                        z: lineObj.scale.z,
+                    }
+                    targetLineData.matrix = Array.from(lineObj.matrix.elements)
+                    targetLineData.mesh_visible = lineObj.visible
+
+                    targetLineData.loft_points = worldPoints
+                }
             }
         })
+
+        setGroupData([...canvasRenderStore.getState().groupData])
+        // saveGroupToIndexDB(canvasRenderStore.getState().groupData)
     }
 
     return null
