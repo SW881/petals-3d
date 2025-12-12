@@ -9,20 +9,17 @@ const CorrectIcon = ({ color, size }) => {
             viewBox="0 0 24 24"
             fill="none"
         >
-            <rect x="0.5" y="0.5" width="23" height="23" stroke="none" />
-            <path
-                d="M3 14L8 19"
-                stroke={color}
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <rect
+                x="-0.5"
+                y="0.5"
+                width="23"
+                height="23"
+                transform="matrix(-1 0 0 1 23 0)"
+                stroke="none"
             />
             <path
-                d="M8 19L14.5 12L21 5"
-                stroke={color}
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                d="M20.57 4L8.40764 16.1607L3.42874 11.1813L2 12.6126L8.40764 19.02L22 5.42909L20.57 4Z"
+                fill={color}
             />
         </svg>
     )
