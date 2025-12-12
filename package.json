@@ -1,15 +1,23 @@
 {
     "name": "petals-3d",
-    "private": true,
     "version": "1.0.0",
+    "description": "Open source 3D drawing editor built with React Three Fiber",
+    "private": true,
     "type": "module",
-    "license": "",
+    "license": "MIT",
     "scripts": {
         "dev": "vite --port 3000",
         "build": "vite build",
-        "preview": "vite preview --port 5000",
-        "lint": "eslint . --ext js,jsx,ts,tsx",
-        "start": "npm run preview"
+        "preview": "vite preview --port 3000",
+        "lint": "eslint src --ext js,jsx --fix",
+        "prepare": "husky"
+    },
+    "lint-staged": {
+        "*.{js,jsx}": "eslint --fix"
+    },
+    "engines": {
+        "node": ">=20.0.0",
+        "npm": ">=10.0.0"
     },
     "dependencies": {
         "@react-three/drei": "^10.0.7",
@@ -31,13 +39,13 @@
     },
     "devDependencies": {
         "@eslint/js": "^9.25.0",
-        "@types/react": "^19.1.2",
-        "@types/react-dom": "^19.1.2",
         "@vitejs/plugin-react": "^4.4.1",
         "eslint": "^9.25.0",
         "eslint-plugin-react-hooks": "^5.2.0",
         "eslint-plugin-react-refresh": "^0.4.19",
         "globals": "^16.0.0",
+        "husky": "^9.1.7",
+        "lint-staged": "^15.2.10",
         "r3f-perf": "^7.2.3",
         "vite": "^6.3.5"
     }

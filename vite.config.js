@@ -8,9 +8,9 @@ export default defineConfig({
         port: 3000,
     },
     build: {
-        sourcemap: false, // Disable source maps (prevents code mapping exposure)
-        minify: 'esbuild', // Fast and compact builds
-        target: 'es2017', // Modern JS target
+        sourcemap: false,
+        minify: 'esbuild',
+        target: 'es2017',
         outDir: 'dist',
     },
 })
