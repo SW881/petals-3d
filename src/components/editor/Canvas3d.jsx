@@ -180,7 +180,7 @@ const Canvas3d = () => {
                 )}
 
                 {snaping && <SnapCameraPositionAndRotation />}
-                <Perf position="bottom-right" />
+                {/* <Perf position="bottom-right" /> */}
 
                 {(gridPlaneX || gridPlaneY || gridPlaneZ) && (
                     <group>
