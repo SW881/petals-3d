@@ -26,7 +26,7 @@ const EraseLine = () => {
     }, [])
 
     const eraseObjects = useCallback(async () => {
-        console.log('Erasing objects')
+        // console.log('Erasing objects')
         highlighted.current.forEach((obj) => {
             if (!obj.parent) return
 

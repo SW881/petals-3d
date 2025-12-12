@@ -14,7 +14,6 @@ import DynamicGuidePlane from './DynamicGuidePlane'
 import DynamicBendGuidePlane from './DynamicBendGuidePlane'
 
 import { eraseLineType, guideObjectType } from '../../../config/objectsConfig'
-import { generateScene } from '../../../helpers/drawHelper'
 
 export default function CanvasOperations() {
     const { scene, gl } = useThree()

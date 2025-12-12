@@ -106,7 +106,7 @@ const TransformLine = () => {
         }
 
         const onDragEnd = async () => {
-            console.log('Drag Ended...')
+            // console.log('Drag Ended...')
             isTransformDragging.current = false
             await updateLineWorldPoints()
         }
@@ -470,7 +470,7 @@ const TransformLine = () => {
                 toLocalSpace(clone, dummyTarget.current)
                 dummyTarget.current.add(clone)
             })
-            console.log({ clones })
+            // console.log({ clones })
 
             setAttachedGizmos(true)
             setCopy(false)
@@ -648,7 +648,7 @@ const TransformLine = () => {
     ])
 
     const updateLineWorldPoints = () => {
-        console.log('Updating Lines Data...')
+        // console.log('Updating Lines Data...')
         dummyTarget.current.children.forEach((lineObj) => {
             if (lineObj.type === 'Mesh' && lineObj.userData.type === 'LINE') {
                 lineObj.updateMatrixWorld(true)

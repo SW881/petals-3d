@@ -67,7 +67,7 @@ const Editor = () => {
 
             const { groupData } = await loadSceneFromIndexedDB()
 
-            console.log({ groupData })
+            // console.log({ groupData })
             if (groupData && groupData.length > 0) {
                 setGroupData(groupData)
                 const activeGroup = groupData.find((g) => g.active)
