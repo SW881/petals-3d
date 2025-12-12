@@ -4,56 +4,56 @@ import { v4 as uuid } from 'uuid'
 export const canvasRenderStore = create((set, get) => ({
     activeScene: null,
     setActiveScene: (obj) =>
-        set((state) => ({
+        set(() => ({
             activeScene: obj,
         })),
 
     lightIntensity: 0,
     setLightIntensity: (active) =>
-        set((state) => ({
+        set(() => ({
             lightIntensity: active,
         })),
 
     intensityBackground: `10% 100%`,
     setIntensityBackground: (value) =>
-        set((state) => ({
+        set(() => ({
             intensityBackground: value,
         })),
 
     postProcess: false,
     setPostProcess: (bool) =>
-        set((state) => ({
+        set(() => ({
             postProcess: bool,
         })),
 
     sequentialLoading: false,
     setSequentialLoading: (bool) =>
-        set((state) => ({
+        set(() => ({
             sequentialLoading: bool,
         })),
 
     canvasBackgroundColor: '#FFFFFF',
     setCanvasBackgroundColor: (color) =>
-        set((state) => ({
+        set(() => ({
             canvasBackgroundColor: color,
         })),
 
     sceneOptions: false,
     setSceneOptions: (bool) =>
-        set((state) => ({
+        set(() => ({
             sceneOptions: bool,
         })),
 
     // ---- Group Actions ----
     groupOptions: false,
     setGroupOptions: (bool) =>
-        set((state) => ({
+        set(() => ({
             groupOptions: bool,
         })),
 
     activeGroup: null,
     setActiveGroup: (value) =>
-        set((state) => ({
+        set(() => ({
             activeGroup: value,
         })),
 
@@ -62,7 +62,7 @@ export const canvasRenderStore = create((set, get) => ({
     selectedGroups: [],
 
     setGroupData: (data) =>
-        set((state) => ({
+        set(() => ({
             groupData: data,
         })),
 
@@ -76,16 +76,6 @@ export const canvasRenderStore = create((set, get) => ({
             selectedGroups: state.selectedGroups.filter(
                 (item) => item.uuid !== groupId
             ), // Filter out the removed item
-        })),
-
-    deleteSelectedGroups: (groupIds) =>
-        set((state) => ({
-            groupData: state.groupData.filter(
-                (group) => !groupIds.includes(group.uuid)
-            ),
-            selectedGroups: state.selectedGroups.filter(
-                (group) => !groupIds.includes(group.uuid)
-            ),
         })),
 
     updateVisibleGroupProduct: (uuid, visiblity) =>
@@ -123,12 +113,11 @@ export const canvasRenderStore = create((set, get) => ({
         const newGroups = selectedGroups.map((g) => ({
             uuid: uuid(),
             name: g.name + '_copy',
-            note_id: g.note_id,
             created_at: new Date().toISOString(),
             deleted_at: null,
-            created_by: g.created_by,
             visible: g.visible,
             active: false,
+            objects: g.objects,
         }))
 
         set({ groupData: [...groupData, ...newGroups] })
@@ -168,7 +157,7 @@ export const canvasRenderStore = create((set, get) => ({
 
     copyGroups: false,
     setCopyGroups: (bool) =>
-        set((state) => ({
+        set(() => ({
             copyGroups: bool,
         })),
 
@@ -176,19 +165,19 @@ export const canvasRenderStore = create((set, get) => ({
 
     renderMode: false,
     setRenderMode: (bool) =>
-        set((state) => ({
+        set(() => ({
             renderOptions: bool,
         })),
 
     renderOptions: false,
     setRenderOptions: (bool) =>
-        set((state) => ({
+        set(() => ({
             renderOptions: bool,
         })),
 
     dprValue: 1,
     setDprValue: (value) =>
-        set((state) => ({
+        set(() => ({
             dprValue: value,
         })),
 }))

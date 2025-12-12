@@ -1,10 +1,15 @@
 import { create } from 'zustand'
-import { v4 as uuid } from 'uuid'
 
-export const canvasDrawStore = create((set, get) => ({
+export const canvasDrawStore = create((set) => ({
+    pointerType: 'mouse',
+    setPointerType: (value) =>
+        set(() => ({
+            pointerType: value,
+        })),
+
     notesData: [],
     setNotesData: (obj) =>
-        set((state) => ({
+        set(() => ({
             notesData: obj,
         })),
 
@@ -13,67 +18,67 @@ export const canvasDrawStore = create((set, get) => ({
 
     penActive: false,
     setPenActive: (active) =>
-        set((state) => ({
+        set(() => ({
             penActive: active,
         })),
 
-    activeMaterialType: 'shaded',
+    activeMaterialType: 'flat',
     setActiveMaterialType: (type) =>
-        set((state) => ({
+        set(() => ({
             activeMaterialType: type,
         })),
 
-    strokeColor: '#000000',
+    strokeColor: '#8F8F8F',
     setStrokeColor: (color) =>
-        set((state) => ({
+        set(() => ({
             strokeColor: color,
         })),
 
     strokeType: 'cube',
     setStrokeType: (style) =>
-        set((state) => ({
+        set(() => ({
             strokeType: style,
         })),
 
     drawShapeType: 'free_hand',
     setDrawShapeType: (style) =>
-        set((state) => ({
+        set(() => ({
             drawShapeType: style,
         })),
 
     openOpacitySlider: false,
     setOpenOpacitySlider: (bool) =>
-        set((state) => ({
+        set(() => ({
             openOpacitySlider: bool,
         })),
 
     openWidthSlider: false,
     setOpenWidthSlider: (bool) =>
-        set((state) => ({
+        set(() => ({
             openWidthSlider: bool,
         })),
 
     openStrokeStabler: false,
     setOpenStrokeStabler: (bool) =>
-        set((state) => ({
+        set(() => ({
             openStrokeStabler: bool,
         })),
 
     pressureMode: false,
     setPressureMode: (bool) =>
-        set((state) => ({
+        set(() => ({
             pressureMode: bool,
         })),
 
     mirrorOptions: false,
     setMirrorOptions: (bool) =>
-        set((state) => ({
+        set(() => ({
             mirrorOptions: bool,
         })),
 
     openDrawShapeOptions: false,
     setOpenDrawShapeOptions: (bool) =>
-        set((state) => ({
+        set(() => ({
             openDrawShapeOptions: bool,
         })),
 
@@ -88,179 +93,176 @@ export const canvasDrawStore = create((set, get) => ({
 
     openColorOptions: false,
     setOpenColorOptions: (bool) =>
-        set((state) => ({
+        set(() => ({
             openColorOptions: bool,
         })),
 
     openStrokeOptions: false,
     setOpenStrokeOptions: (bool) =>
-        set((state) => ({
+        set(() => ({
             openStrokeOptions: bool,
         })),
 
     drawGuideShapeOptions: false,
     setDrawGuideShapeOptions: (bool) =>
-        set((state) => ({
+        set(() => ({
             drawGuideShapeOptions: bool,
         })),
 
     widthBackground: `4.8% 100%`,
-    stableBackground: `50% 100%`,
+    stableBackground: `30% 100%`,
     opacityBackground: `100% 100%`,
     tensionBackground: `50% 100%`,
-    ployBackground: `50% 100%`,
+    ployBackground: `1% 100%`,
     waistBackground: `50% 100%`,
     radialBackground: `50% 100%`,
 
     setWidthBackground: (value) =>
-        set((state) => ({
+        set(() => ({
             widthBackground: value,
         })),
     setStableBackground: (value) =>
-        set((state) => ({
+        set(() => ({
             stableBackground: value,
         })),
     setOpacityBackground: (value) =>
-        set((state) => ({
+        set(() => ({
             opacityBackground: value,
         })),
     setTensionBackground: (value) =>
-        set((state) => ({
+        set(() => ({
             tensionBackground: value,
         })),
     setWaistBackground: (value) =>
-        set((state) => ({
+        set(() => ({
             waistBackground: value,
         })),
     setRadialBackground: (value) =>
-        set((state) => ({
+        set(() => ({
             radialBackground: value,
         })),
     setPolyBackground: (value) =>
-        set((state) => ({
+        set(() => ({
             ployBackground: value,
         })),
 
     strokeWidth: 0.1,
     strokeOpacity: 1,
-    strokeStablePercentage: 50,
+    strokeStablePercentage: 30,
     tensionPercentage: 50,
     polyCountPercentage: 1,
     radialPercentage: 50,
     waistPercentage: 50,
 
     setStrokeWidth: (width) =>
-        set((state) => ({
+        set(() => ({
             strokeWidth: width,
         })),
     setStrokeOpacity: (opacity) =>
-        set((state) => ({
+        set(() => ({
             strokeOpacity: opacity,
         })),
 
     setStrokeStablePercentage: (value) =>
-        set((state) => ({
+        set(() => ({
             strokeStablePercentage: value,
         })),
 
     setTensionPercentage: (value) =>
-        set((state) => ({
+        set(() => ({
             tensionPercentage: value,
         })),
 
     setRadialPercentage: (value) =>
-        set((state) => ({
+        set(() => ({
             radialPercentage: value,
         })),
 
     setWaistPercentage: (value) =>
-        set((state) => ({
+        set(() => ({
             waistPercentage: value,
         })),
 
     setPolyCountPercentage: (value) =>
-        set((state) => ({
+        set(() => ({
             polyCountPercentage: value,
         })),
 
     eraserActive: false,
     setEraserActive: (active) =>
-        set((state) => ({
+        set(() => ({
             eraserActive: active,
         })),
 
     selectLines: false,
     setSelectLines: (select) =>
-        set((state) => ({
+        set(() => ({
             selectLines: select,
         })),
 
     selectGuide: false,
     setSelectGuide: (select) =>
-        set((state) => ({
+        set(() => ({
             selectGuide: select,
         })),
 
     copy: false,
     setCopy: (bool) =>
-        set((state) => ({
+        set(() => ({
             copy: bool,
         })),
 
     mergeGeometries: false,
     setMergeGeometries: (bool) =>
-        set((state) => ({
+        set(() => ({
             mergeGeometries: bool,
         })),
 
     drawGuide: false,
     setDrawGuide: (draw) =>
-        set((state) => ({
+        set(() => ({
             drawGuide: draw,
         })),
 
-    ogGuidePoints: null,
-    ogGuideNormals: null,
-
     transformMode: 'translate',
     setTransformMode: (mode) =>
-        set((state) => ({
+        set(() => ({
             transformMode: mode,
         })),
 
     axisMode: 'local',
     setAxisMode: (mode) =>
-        set((state) => ({
+        set(() => ({
             axisMode: mode,
         })),
 
-    lineColor: '#15cf6c',
+    lineColor: '#8F8F8F',
     setLineColor: (color) =>
-        set((state) => ({
+        set(() => ({
             lineColor: color,
         })),
 
     dynamicDrawingPlaneMesh: null,
     setDynamicDrawingPlaneMesh: (mesh) =>
-        set((state) => ({
+        set(() => ({
             dynamicDrawingPlaneMesh: mesh,
         })),
 
     bendPlaneGuide: false,
     setBendPlaneGuide: (bool) =>
-        set((state) => ({
+        set(() => ({
             bendPlaneGuide: bool,
         })),
 
     loftGuidePlane: false,
     setLoftGuidePlane: (bool) =>
-        set((state) => ({
+        set(() => ({
             loftGuidePlane: bool,
         })),
 
     highlighted: [],
     setHighlighted: (data) =>
-        set((state) => ({
+        set(() => ({
             highlighted: data,
         })),
     addToHighlighted: (mesh) =>
@@ -270,25 +272,25 @@ export const canvasDrawStore = create((set, get) => ({
 
     generateLoftSurface: false,
     setGenerateLoftSurface: (bool) =>
-        set((state) => ({
+        set(() => ({
             generateLoftSurface: bool,
         })),
 
     ogGuidePoints: null,
     setOgGuidePoints: (data) =>
-        set((state) => ({
+        set(() => ({
             ogGuidePoints: data,
         })),
 
     ogGuideNormals: null,
     setOgGuideNormals: (data) =>
-        set((state) => ({
+        set(() => ({
             ogGuideNormals: data,
         })),
 
     eraseGuide: false,
     setEraseGuide: (bool) =>
-        set((state) => ({
+        set(() => ({
             eraseGuide: bool,
         })),
 }))

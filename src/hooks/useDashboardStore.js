@@ -16,62 +16,62 @@ export const dashboardStore = create((set) => ({
     sortBy: 'Last Modified',
 
     setActiveTab: (tab) =>
-        set((state) => ({
+        set(() => ({
             activeTab: tab,
         })),
 
     setNewFolderModal: (bool) =>
-        set((state) => ({
+        set(() => ({
             newFolderModal: bool,
         })),
 
     setNewNoteModal: (bool) =>
-        set((state) => ({
+        set(() => ({
             newNoteModal: bool,
         })),
 
     setNewGroupModal: (bool) =>
-        set((state) => ({
+        set(() => ({
             newGroupModal: bool,
         })),
 
     setRenameGroupModal: (bool) =>
-        set((state) => ({
+        set(() => ({
             renameGroupModal: bool,
         })),
 
     setCopyGroupModal: (bool) =>
-        set((state) => ({
+        set(() => ({
             copyGroupModal: bool,
         })),
 
     setDeleteGroupModal: (bool) =>
-        set((state) => ({
+        set(() => ({
             deleteGroupModal: bool,
         })),
 
     setShowSettings: (bool) =>
-        set((state) => ({
+        set(() => ({
             showSettings: bool,
         })),
 
     setIsHovered: (bool) =>
-        set((state) => ({
+        set(() => ({
             isHovered: bool,
         })),
 
     setSession: (obj) =>
-        set((state) => ({
+        set(() => ({
             session: obj,
         })),
 
     setLoading: (bool) =>
-        set((state) => ({
+        set(() => ({
             loading: bool,
         })),
 
     setSortBy: (bool) =>
-        set((state) => ({
+        set(() => ({
             sortBy: bool,
         })),
 }))

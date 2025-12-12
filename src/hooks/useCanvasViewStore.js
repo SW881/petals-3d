@@ -1,57 +1,69 @@
 import { create } from 'zustand'
 
 export const canvasViewStore = create((set) => ({
+    darkTheme: false,
+    setDarkTheme: (bool) =>
+        set(() => ({
+            darkTheme: bool,
+        })),
+
     orbitalLock: false,
     setOrbitalLock: (orbitalLockState) =>
-        set((state) => ({
+        set(() => ({
             orbitalLock: orbitalLockState,
         })),
 
     cameraFov: 30,
     setCameraFov: (value) =>
-        set((state) => ({
+        set(() => ({
             cameraFov: value,
         })),
 
     showFovSlider: false,
     setShowFovSlider: (bool) =>
-        set((state) => ({
+        set(() => ({
             showFovSlider: bool,
         })),
 
     isOrthographic: false,
     setIsOrthographic: (bool) =>
-        set((state) => ({
+        set(() => ({
             isOrthographic: bool,
         })),
 
     showGridOptions: false,
     setShowGridOptions: (bool) =>
-        set((state) => ({
+        set(() => ({
             showGridOptions: bool,
+        })),
+
+    fullScreen: false,
+    setFullScreen: (bool) =>
+        set(() => ({
+            fullScreen: bool,
         })),
 
     gridPlaneX: true,
     gridPlaneY: false,
     gridPlaneZ: false,
     setGridPlaneX: (show) =>
-        set((state) => ({
+        set(() => ({
             gridPlaneX: show,
         })),
 
     setGridPlaneY: (show) =>
-        set((state) => ({
+        set(() => ({
             gridPlaneY: show,
         })),
 
     setGridPlaneZ: (show) =>
-        set((state) => ({
+        set(() => ({
             gridPlaneZ: show,
         })),
 
     fovBackground: `30% 100%`,
     setFovBackground: (value) =>
-        set((state) => ({
+        set(() => ({
             fovBackground: value,
         })),
 }))
