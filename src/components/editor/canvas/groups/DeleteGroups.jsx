@@ -1,17 +1,12 @@
 import React, { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { v4 as uuid } from 'uuid'
 
-import { dashboardStore } from '../../../../hooks/useDashboardStore'
-
-import WrongIcon from '../../../svg-icons/WrongIcon'
-import { saveGroupToIndexDB } from '../../../../helpers/sceneFunction'
-import { drawStore } from '../../../../hooks/useDrawStore'
-import { canvasRenderStore } from '../../../../hooks/useRenderSceneStore'
 import WrongButtonIcon from '../../../svg-icons/WrongButtonIcon'
 
+import { saveGroupToIndexDB } from '../../../../db/storage'
+import { dashboardStore } from '../../../../hooks/useDashboardStore'
+import { canvasRenderStore } from '../../../../hooks/useRenderSceneStore'
+
 const DeleteGroups = () => {
-    const { id = 1 } = useParams()
     const { setDeleteGroupModal } = dashboardStore((state) => state)
     const [animateOut, setAnimateOut] = useState(false)
     const [groupName, setGroupName] = useState('')
@@ -38,7 +33,7 @@ const DeleteGroups = () => {
 
             const updatedGroupData = canvasRenderStore.getState().groupData
 
-            const response = await saveGroupToIndexDB(updatedGroupData, id)
+            const response = await saveGroupToIndexDB(updatedGroupData)
             resetSelectedGroups()
 
             if (response) {
@@ -62,7 +57,7 @@ const DeleteGroups = () => {
                 <div className="fixed inset-0 z-10 overflow-y-auto text-[8px] md:text-[12px]">
                     <div className="flex h-full items-center justify-center text-center">
                         <div
-                            className={`bg-[#171717] relative overflow-hidden rounded-[8px] w-[320px] md:w-[420px] transition-all duration-200 ease-out transform
+                            className={`bg-[#FFFFFF] relative overflow-hidden rounded-[8px] w-[320px] md:w-[420px] transition-all duration-200 ease-out transform
                                 ${
                                     animateOut
                                         ? 'animate-fade-out'
@@ -70,25 +65,28 @@ const DeleteGroups = () => {
                                 }`}
                         >
                             <div className="flex justify-between items-center text-left text-[12px] md:text-[16px] p-[12px] m-[4px] border-b-[1px] border-[#D9D9D9] funnel-sans-semibold">
-                                <div className="text-[#FFFFFF]">
+                                <div className="text-[#000000]">
                                     Delete Groups
                                 </div>
                                 <div
                                     onClick={(e) => handleClose(e)}
-                                    className="group text-[#606060] hover:text-[#FFFFFF] active:scale-90 p-[4px] flex justify-between rounded-[8px] items-center cursor-pointer"
+                                    className="active:scale-90 p-[4px] rounded-[8px] cursor-pointer"
                                 >
-                                    <WrongButtonIcon size={12} />
+                                    <WrongButtonIcon
+                                        color="#000000"
+                                        size={16}
+                                    />
                                 </div>
                             </div>
                             <div className="mx-[20px] mt-[12px]">
-                                <div className="mt-[16px] text-[12px] text-[#FFFFFF] text-left">
+                                <div className="mt-[16px] text-[12px] text-[#000000] text-left">
                                     Are you sure you want to delete groups ?
                                 </div>
                             </div>
                             <div className="mt-[12px] flex justify-end items-center px-4 py-3 gap-[12px]">
                                 <button
                                     onClick={(e) => handleClose(e)}
-                                    className="active:scale-90 text-[#FFFFFF] border-[#FFFFFF] border-[1px] px-[12px] py-[4px] rounded-[8px] cursor-pointer"
+                                    className="active:scale-90 text-[#000000] border-[#D9D9D9] border-[1px] px-[12px] py-[4px] rounded-[8px] cursor-pointer"
                                 >
                                     Cancel
                                 </button>
@@ -96,7 +94,7 @@ const DeleteGroups = () => {
                                 <button
                                     disabled={loading}
                                     onClick={(e) => handleDeleteGroups(e)}
-                                    className="text-[#FFFFFF] active:scale-90 px-[12px] py-[4px] rounded-[8px] bg-[#7f2315]/50 border-[1px] border-[#7f2315] cursor-pointer"
+                                    className="text-[#000000] active:scale-90 px-[12px] py-[4px] rounded-[8px] bg-[#7f2315]/25 border-[1px] border-[#7f2315] cursor-pointer"
                                 >
                                     Delete
                                 </button>
