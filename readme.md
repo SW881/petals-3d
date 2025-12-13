@@ -15,7 +15,7 @@
 <div align="center">
   <figure>
     <a href="https://petals-3d.com" target="_blank" rel="noopener">
-      <img src="./public/editor.png" alt="Product showcase" />
+      <img src="./public/editor.jpeg" alt="Product showcase" />
     </a>
     <figcaption>
       <p align="center">
