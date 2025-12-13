@@ -8,7 +8,6 @@ import {
     PerspectiveCamera,
     OrthographicCamera,
 } from '@react-three/drei'
-import { Perf } from 'r3f-perf'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
 
 extend(THREE)
@@ -180,7 +179,6 @@ const Canvas3d = () => {
                 )}
 
                 {snaping && <SnapCameraPositionAndRotation />}
-                {/* <Perf position="bottom-right" /> */}
 
                 {(gridPlaneX || gridPlaneY || gridPlaneZ) && (
                     <group>

@@ -9,31 +9,23 @@
         "dev": "vite --port 3000",
         "build": "vite build",
         "preview": "vite preview --port 3000",
-        "lint": "eslint src --ext js,jsx --fix",
-        "prepare": "husky"
+        "lint": "eslint src --ext js,jsx --fix"
     },
     "lint-staged": {
         "*.{js,jsx}": "eslint --fix"
-    },
-    "engines": {
-        "node": ">=20.0.0",
-        "npm": ">=10.0.0"
     },
     "dependencies": {
         "@react-three/drei": "^10.0.7",
         "@react-three/fiber": "^9.1.2",
         "@react-three/postprocessing": "^3.0.4",
-        "@react-three/rapier": "^2.1.0",
-        "@supabase/supabase-js": "^2.52.1",
         "@tailwindcss/vite": "^4.1.7",
         "axios": "^1.11.0",
         "idb-keyval": "^6.2.2",
-        "postprocessing": "^6.37.8",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
         "react-router-dom": "^7.6.0",
         "tailwindcss": "^4.1.7",
-        "three": "^0.178.0",
+        "three": "0.182.0",
         "uuid": "^13.0.0",
         "zustand": "^5.0.4"
     },
@@ -44,9 +36,7 @@
         "eslint-plugin-react-hooks": "^5.2.0",
         "eslint-plugin-react-refresh": "^0.4.19",
         "globals": "^16.0.0",
-        "husky": "^9.1.7",
         "lint-staged": "^15.2.10",
-        "r3f-perf": "^7.2.3",
         "vite": "^6.3.5"
     }
 }
