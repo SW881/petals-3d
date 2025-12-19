@@ -3,10 +3,14 @@ import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import { TransformControls } from 'three/addons/controls/TransformControls.js'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { toast } from 'react-toastify'
+import { Zoom } from 'react-toastify'
 
-import { saveGroupToIndexDB } from '../../../db/storage'
-import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
-import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
+import { saveGroupToIndexDB } from '../../db/storage'
+import { dashboardStore } from '../../hooks/useDashboardStore'
+import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
+import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
+import { Fade } from '../../config/objectsConfig'
 
 const TransformLine = () => {
     const { camera, mouse, raycaster, scene, gl, invalidate } = useThree()
@@ -106,7 +110,6 @@ const TransformLine = () => {
         }
 
         const onDragEnd = async () => {
-            // console.log('Drag Ended...')
             isTransformDragging.current = false
             await updateLineWorldPoints()
         }
@@ -295,21 +298,15 @@ const TransformLine = () => {
                 scene.add(dummyTarget.current)
             }
 
-            selectedObjects.forEach((obj) => {
-                toLocalSpace(obj, dummyTarget.current)
-                dummyTarget.current.add(obj)
-                let baseColor = new THREE.Color(obj.userData.color)
-                const colors = obj.geometry.attributes.color
-                for (let i = 0; i < colors.count; i++) {
-                    colors.setXYZW(
-                        i,
-                        baseColor.r,
-                        baseColor.g,
-                        baseColor.b,
-                        obj.userData.opacity
-                    )
+            selectedObjects.forEach((object) => {
+                toLocalSpace(object, dummyTarget.current)
+                dummyTarget.current.add(object)
+
+                if (object.material) {
+                    object.material.transparent = object.userData.opacity < 1
+                    object.material.opacity = object.userData.opacity
+                    object.material.needsUpdate = true
                 }
-                colors.needsUpdate = true
             })
 
             invalidate()
@@ -347,18 +344,11 @@ const TransformLine = () => {
                 highlighted.current.add(object)
                 hasNewHighlight = true
 
-                const colors = object.geometry.attributes.color
-                const greenColor = new THREE.Color('#00FF00')
-                for (let i = 0; i < colors.count; i++) {
-                    colors.setXYZW(
-                        i,
-                        greenColor.r,
-                        greenColor.g,
-                        greenColor.b,
-                        0.5
-                    )
+                if (object.material) {
+                    object.material.transparent = true
+                    object.material.opacity = 0.5
+                    object.material.needsUpdate = true
                 }
-                colors.needsUpdate = true
             }
         })
 
@@ -369,8 +359,6 @@ const TransformLine = () => {
 
     useEffect(() => {
         if (dummyTarget.current?.children.length > 0) {
-            const newColor = new THREE.Color(lineColor)
-
             dummyTarget.current.children.forEach((obj) => {
                 if (
                     obj.isMesh &&
@@ -380,25 +368,17 @@ const TransformLine = () => {
                         obj.userData?.type === 'LOFT_SURFACE')
                 ) {
                     obj.userData.color = lineColor
-
-                    const colors = obj.geometry.attributes.color
-                    for (let i = 0; i < colors.count; i++) {
-                        colors.setXYZW(
-                            i,
-                            newColor.r,
-                            newColor.g,
-                            newColor.b,
-                            obj.userData.opacity
-                        )
+                    if (object.material) {
+                        object.material.color = lineColor
+                        object.material.needsUpdate = true
                     }
-                    colors.needsUpdate = true
                 }
             })
 
-            // if (highlighted.current.size >= 1) {
-            //     setGroupData([...canvasRenderStore.getState().groupData])
-            //     saveGroupToIndexDB(canvasRenderStore.getState().groupData)
-            // }
+            if (highlighted.current.size >= 1) {
+                setGroupData([...canvasRenderStore.getState().groupData])
+                saveGroupToIndexDB(canvasRenderStore.getState().groupData)
+            }
 
             invalidate()
         }
@@ -470,7 +450,6 @@ const TransformLine = () => {
                 toLocalSpace(clone, dummyTarget.current)
                 dummyTarget.current.add(clone)
             })
-            // console.log({ clones })
 
             setAttachedGizmos(true)
             setCopy(false)
@@ -480,7 +459,20 @@ const TransformLine = () => {
             activeGroup.objects.push(...clGroup)
 
             setGroupData([...canvasRenderStore.getState().groupData])
-            // saveGroupToIndexDB(canvasRenderStore.getState().groupData)
+
+            saveGroupToIndexDB(canvasRenderStore.getState().groupData)
+
+            toast.success(`${clones.length} curves copied!`, {
+                position: 'top-center',
+                autoClose: 1000,
+                hideProgressBar: true,
+                closeOnClick: false,
+                pauseOnHover: false,
+                draggable: false,
+                progress: undefined,
+                theme: 'light',
+                transition: Fade,
+            })
         }
     }, [copy, scene, selectLines, setAttachedGizmos, setCopy, setActiveScene])
 
@@ -647,58 +639,59 @@ const TransformLine = () => {
         resetDummyTarget,
     ])
 
+    const _wp = new THREE.Vector3()
+    const _wq = new THREE.Quaternion()
+    const _ws = new THREE.Vector3()
+
+    const asVector3 = (p) => {
+        if (p?.isVector3) return p
+        if (Array.isArray(p)) return new THREE.Vector3().fromArray(p)
+        if (p && typeof p === 'object' && 'x' in p && 'y' in p && 'z' in p) {
+            return new THREE.Vector3(p.x, p.y, p.z)
+        }
+        throw new Error('Point is not convertible to Vector3')
+    }
+
     const updateLineWorldPoints = () => {
-        // console.log('Updating Lines Data...')
         dummyTarget.current.children.forEach((lineObj) => {
-            if (lineObj.type === 'Mesh' && lineObj.userData.type === 'LINE') {
+            if (lineObj.isMesh && lineObj.userData.type === 'LINE') {
                 lineObj.updateMatrixWorld(true)
 
                 const localPoints = lineObj.userData.loft_points
-                if (!localPoints || localPoints.length === 0) {
-                    console.warn('No loft_points found on line object')
-                    return
-                }
-                const worldPoints = localPoints.map((localPt) =>
-                    localPt.clone().applyMatrix4(lineObj.matrixWorld)
+                if (!localPoints?.length) return
+
+                const worldPoints = localPoints.map((p) =>
+                    asVector3(p).clone().applyMatrix4(lineObj.matrixWorld)
                 )
                 lineObj.userData.loft_points = worldPoints
 
+                lineObj.getWorldPosition(_wp)
+                lineObj.getWorldQuaternion(_wq)
+                lineObj.getWorldScale(_ws)
+
                 const lineUuid = lineObj.userData.uuid
 
-                const targetGroup = canvasRenderStore
-                    .getState()
-                    .groupData.find((g) => g.uuid === activeGroup.uuid)
-                const targetLineData = targetGroup?.objects.find(
+                const targetLineData = activeGroup?.objects.find(
                     (obj) => obj.uuid === lineUuid
                 )
 
                 if (targetLineData) {
-                    targetLineData.position = {
-                        x: lineObj.position.x,
-                        y: lineObj.position.y,
-                        z: lineObj.position.z,
-                    }
+                    targetLineData.position = { x: _wp.x, y: _wp.y, z: _wp.z }
                     targetLineData.rotation = {
-                        x: lineObj.rotation.x,
-                        y: lineObj.rotation.y,
-                        z: lineObj.rotation.z,
-                        w: lineObj.quaternion.w,
+                        x: _wq.x,
+                        y: _wq.y,
+                        z: _wq.z,
+                        w: _wq.w,
                     }
-                    targetLineData.scale = {
-                        x: lineObj.scale.x,
-                        y: lineObj.scale.y,
-                        z: lineObj.scale.z,
-                    }
-                    targetLineData.matrix = Array.from(lineObj.matrix.elements)
-                    targetLineData.mesh_visible = lineObj.visible
-
+                    targetLineData.scale = { x: _ws.x, y: _ws.y, z: _ws.z }
                     targetLineData.loft_points = worldPoints
                 }
             }
         })
 
         setGroupData([...canvasRenderStore.getState().groupData])
-        // saveGroupToIndexDB(canvasRenderStore.getState().groupData)
+
+        saveGroupToIndexDB(canvasRenderStore.getState().groupData)
     }
 
     return null

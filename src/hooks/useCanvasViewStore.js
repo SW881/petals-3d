@@ -1,12 +1,6 @@
 import { create } from 'zustand'
 
 export const canvasViewStore = create((set) => ({
-    darkTheme: false,
-    setDarkTheme: (bool) =>
-        set(() => ({
-            darkTheme: bool,
-        })),
-
     orbitalLock: false,
     setOrbitalLock: (orbitalLockState) =>
         set(() => ({

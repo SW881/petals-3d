@@ -2,8 +2,8 @@ import React, { useRef, useCallback } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
-import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
-import { canvasViewStore } from '../../../hooks/useCanvasViewStore'
+import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
+import { canvasViewStore } from '../../hooks/useCanvasViewStore'
 
 import {
     smoothArray,
@@ -12,7 +12,7 @@ import {
     generateCirclePointsWorld,
     getSnappedLinePointsInPlane,
     generateSemiCircleOpenArcWorld,
-} from '../../../helpers/drawHelper'
+} from '../../helpers/drawHelper'
 
 const DynamicGuidePlane = ({ onDrawingFinished }) => {
     const { camera, scene, gl } = useThree()

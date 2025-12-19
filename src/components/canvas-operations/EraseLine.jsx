@@ -1,16 +1,18 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 
-import { saveGroupToIndexDB } from '../../../db/storage'
-import { eraseLineType } from '../../../config/objectsConfig'
-import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
-import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
+import { saveGroupToIndexDB } from '../../db/storage'
+import { eraseLineType, Fade } from '../../config/objectsConfig'
+
+import { dashboardStore } from '../../hooks/useDashboardStore'
+import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
+import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
+
+import { toast } from 'react-toastify'
 
 const EraseLine = () => {
     const { camera, mouse, raycaster, scene } = useThree()
-    const { activeGroup, groupData, setGroupData } = canvasRenderStore(
-        (state) => state
-    )
+    const { activeGroup, setGroupData } = canvasRenderStore((state) => state)
     const { eraserActive, pointerType } = canvasDrawStore((state) => state)
 
     const highlighted = useRef(new Set())
@@ -26,22 +28,41 @@ const EraseLine = () => {
     }, [])
 
     const eraseObjects = useCallback(async () => {
-        // console.log('Erasing objects')
+        let totatLines = highlighted.current.size
         highlighted.current.forEach((obj) => {
             if (!obj.parent) return
 
             obj.visible = false
             obj.userData.is_deleted = true
 
-            activeGroup.objects.filter((item) => item.uuid !== obj.uuid)
+            const lineUuid = obj.userData.uuid
+
+            const targetLineData = activeGroup?.objects.find(
+                (obj) => obj.uuid === lineUuid
+            )
+
+            if (targetLineData) {
+                targetLineData.is_deleted = true
+            }
         })
 
-        // if (highlighted.current.size >= 1) {
-        //     console.log('Saving data in db after removing : ')
+        setGroupData([...canvasRenderStore.getState().groupData])
 
-        //     setGroupData([...canvasRenderStore.getState().groupData])
-        //     await saveGroupToIndexDB(canvasRenderStore.getState().groupData)
-        // }
+        await saveGroupToIndexDB(canvasRenderStore.getState().groupData)
+
+        if (totatLines >= 1) {
+            toast.success(`${totatLines} curves erased!`, {
+                position: 'top-center',
+                autoClose: 1000,
+                hideProgressBar: true,
+                closeOnClick: false,
+                pauseOnHover: false,
+                draggable: false,
+                progress: undefined,
+                theme: 'light',
+                transition: Fade,
+            })
+        }
 
         highlighted.current.clear()
     }, [setGroupData])

@@ -3,8 +3,8 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { TransformControls } from 'three/addons/controls/TransformControls.js'
 
-import { guideObjectType } from '../../../config/objectsConfig'
-import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
+import { guideObjectType } from '../../config/objectsConfig'
+import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
 
 const TransformGuide = () => {
     const { camera, mouse, raycaster, scene, gl, invalidate } = useThree()

@@ -267,7 +267,7 @@ export const canvasDrawStore = create((set) => ({
         })),
     addToHighlighted: (mesh) =>
         set((state) => ({
-            highlighted: [...state.highlighted, mesh], // Add new product to the selectedGroups array
+            highlighted: [...state.highlighted, mesh],
         })),
 
     generateLoftSurface: false,

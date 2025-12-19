@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 
-import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
+import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
 
 import {
     ensureEvenCount,
@@ -11,8 +11,8 @@ import {
     normalizeGuideSetNoNormals,
     createControlledLoftedSurface,
     detectAndCombineConnectedLoop,
-} from '../../../helpers/loftGuideHelper'
-import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
+} from '../../helpers/loftGuideHelper'
+import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
 
 const LoftGuidePlane = ({ onDrawingFinished }) => {
     const { camera, mouse, raycaster, scene, invalidate } = useThree()
@@ -188,7 +188,6 @@ const LoftGuidePlane = ({ onDrawingFinished }) => {
     useEffect(() => {
         if (loftGuidePlane) {
             if (generateLoftSurface && !prevGenerateLoftRef.current) {
-                // console.log('Generating loft guide')
                 prevGenerateLoftRef.current = true
 
                 if (!loftedSurfaceRef.current) return
@@ -231,7 +230,6 @@ const LoftGuidePlane = ({ onDrawingFinished }) => {
                 finalGeometry.attributes.position.needsUpdate = true
 
                 scene.add(staticMesh)
-                // console.log('Generated loft guide added to scene')
 
                 resetHighlightedObjects()
                 setHighlighted([])

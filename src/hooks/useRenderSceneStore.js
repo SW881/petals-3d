@@ -44,7 +44,6 @@ export const canvasRenderStore = create((set, get) => ({
             sceneOptions: bool,
         })),
 
-    // ---- Group Actions ----
     groupOptions: false,
     setGroupOptions: (bool) =>
         set(() => ({
@@ -68,14 +67,14 @@ export const canvasRenderStore = create((set, get) => ({
 
     addToSelectedGroup: (group) =>
         set((state) => ({
-            selectedGroups: [...state.selectedGroups, group], // Add new product to the selectedGroups array
+            selectedGroups: [...state.selectedGroups, group],
         })),
 
     removeFromSelectedGroup: (groupId) =>
         set((state) => ({
             selectedGroups: state.selectedGroups.filter(
                 (item) => item.uuid !== groupId
-            ), // Filter out the removed item
+            ),
         })),
 
     updateVisibleGroupProduct: (uuid, visiblity) =>
@@ -89,7 +88,7 @@ export const canvasRenderStore = create((set, get) => ({
         set((state) => ({
             groupData: state.groupData.map((group) => ({
                 ...group,
-                active: group.uuid === uuid, // true if matched, false otherwise
+                active: group.uuid === uuid,
             })),
         })),
 
@@ -133,15 +132,12 @@ export const canvasRenderStore = create((set, get) => ({
     deleteSelectedGroups: () => {
         const { selectedGroups, groupData } = get()
 
-        // Extract UUIDs from selected groups
         const selectedIds = selectedGroups.map((g) => g.uuid)
 
-        // Filter out any group whose UUID matches a selected one
         const updatedGroups = groupData.filter(
             (group) => !selectedIds.includes(group.uuid)
         )
 
-        // Update store: remove from both groupData and selectedGroups
         set({ groupData: updatedGroups })
     },
 
@@ -160,8 +156,6 @@ export const canvasRenderStore = create((set, get) => ({
         set(() => ({
             copyGroups: bool,
         })),
-
-    // ---- Group Actions ----
 
     renderMode: false,
     setRenderMode: (bool) =>

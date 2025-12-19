@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
-import DropperIcon from '../svg-icons/DropperIcon'
+import DropperIcon from './svg-icons/DropperIcon'
 
-// ---------- Color utils ----------
 const hsvToRgb = (h, s, v) => {
     let c = v * s,
         x = c * (1 - Math.abs(((h / 60) % 2) - 1)),
@@ -49,37 +48,31 @@ const normalizeHex = (v) => {
     return /^#([0-9A-F]{6})$/i.test(s) ? s : null
 }
 
-// ---------- Sizes ----------
 const WHEEL_SIZE = 200,
     SQUARE_SIZE = 100
 const WHEEL_SIZE_M = 160,
     SQUARE_SIZE_M = 72
 
-// ---------- Component ----------
 const ColorPicker = ({ value, onChange, isSmall }) => {
     const canvasRef = useRef(null)
     const squareCanvasRef = useRef(null)
 
-    // Internal HSV state (drives canvases)
     const [hue, setHue] = useState(0)
     const [sat, setSat] = useState(0)
     const [val, setVal] = useState(1)
 
-    // Draft input text (can be partial while typing)
     const [inputHex, setInputHex] = useState('#000000')
     const [typing, setTyping] = useState(false)
 
-    // Guards and UI state
-    const syncingRef = useRef(false) // suppress external->internal echo
+    const syncingRef = useRef(false)
     const [draggingWheel, setDraggingWheel] = useState(false)
     const [draggingSquare, setDraggingSquare] = useState(false)
 
-    // ----- Sync from external value -> internal HSV (no emit) -----
     useEffect(() => {
         const src = normalizeHex(value)
         if (!src) return
-        if (typing) return // don't stomp while user is typing
-        if (src === inputHex) return // already reflected
+        if (typing) return
+        if (src === inputHex) return
 
         syncingRef.current = true
         const { h, s, v } = hexToHsv(src)
@@ -92,16 +85,14 @@ const ColorPicker = ({ value, onChange, isSmall }) => {
         })
     }, [value, inputHex, typing])
 
-    // ----- HSV -> HEX (emit only if not syncing) -----
     useEffect(() => {
         if (syncingRef.current) return
         const { r, g, b } = hsvToRgb(hue, sat, val)
         const nextHex = rgbToHex(r, g, b)
         if (!typing && nextHex !== inputHex) setInputHex(nextHex)
         onChange?.(nextHex)
-    }, [hue, sat, val]) // onChange should be a stable setter from Zustand
+    }, [hue, sat, val])
 
-    // ----- Hex input -----
     const handleHexFocus = () => setTyping(true)
     const handleHexBlur = () => {
         setTyping(false)
@@ -114,12 +105,11 @@ const ColorPicker = ({ value, onChange, isSmall }) => {
     const handleHexInput = (e) => {
         let text = e.target.value.toUpperCase()
         if (!text.startsWith('#')) text = '#' + text.slice(0, 6)
-        setInputHex(text) // always reflect draft text
+        setInputHex(text)
 
         const valid = normalizeHex(text)
         if (!valid) return
 
-        // Update HSV and emit once; suppress HSV effect echo
         const { h, s, v } = hexToHsv(valid)
         syncingRef.current = true
         setHue(h)
@@ -131,7 +121,6 @@ const ColorPicker = ({ value, onChange, isSmall }) => {
         })
     }
 
-    // ----- Eyedropper -----
     const handleEyedropper = async () => {
         if (!('EyeDropper' in window)) {
             alert('EyeDropper API not supported in this browser.')
@@ -157,7 +146,6 @@ const ColorPicker = ({ value, onChange, isSmall }) => {
         }
     }
 
-    // ----- Hue wheel -----
     useEffect(() => {
         const canvas = canvasRef.current
         if (!canvas) return
@@ -192,7 +180,6 @@ const ColorPicker = ({ value, onChange, isSmall }) => {
         ctx.stroke()
     }, [hue, isSmall])
 
-    // ----- Sat/Val square -----
     useEffect(() => {
         const canvas = squareCanvasRef.current
         if (!canvas) return
@@ -223,7 +210,6 @@ const ColorPicker = ({ value, onChange, isSmall }) => {
         ctx.stroke()
     }, [hue, sat, val, isSmall])
 
-    // ----- Drag handlers -----
     const handleWheelMouseDown = (e) => {
         setDraggingWheel(true)
         updateHueFromEvent(e)

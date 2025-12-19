@@ -1,17 +1,17 @@
 import React, { useCallback, useEffect } from 'react'
 
-import LockIcon from '../../../svg-icons/LockIcon'
-import UndoIcon from '../../../svg-icons/UndoIcon'
-import RedoIcon from '../../../svg-icons/RedoIcon'
-import GridIcon from '../../../svg-icons/GridIcon'
-import CameraFovIcon from '../../../svg-icons/CameraFovIcon'
-import OrthograhicView from '../../../svg-icons/OrthograhicView'
+import LockIcon from '../svg-icons/LockIcon'
+import UndoIcon from '../svg-icons/UndoIcon'
+import RedoIcon from '../svg-icons/RedoIcon'
+import GridIcon from '../svg-icons/GridIcon'
+import CameraFovIcon from '../svg-icons/CameraFovIcon'
+import FullScreenIcon from '../svg-icons/FullScreenIcon'
+import OrthograhicView from '../svg-icons/OrthograhicView'
 
-import { canvasViewStore } from '../../../../hooks/useCanvasViewStore'
+import { canvasViewStore } from '../../hooks/useCanvasViewStore'
 
-import ToolTip from '../../../info/ToolTip'
-import RangeSlider from './RangeSlider'
-import FullScreenIcon from '../../../svg-icons/FullScreenIcon'
+import RangeSlider from '../RangeSlider'
+import ToolTip from '../ToolTip'
 
 const ViewsPanel = ({ isSmall }) => {
     const {
@@ -59,41 +59,24 @@ const ViewsPanel = ({ isSmall }) => {
         }
     }
 
-    async function handleFovSlider(e) {
-        e.preventDefault()
-        setCameraFov(parseInt(e.target.value))
-        e.preventDefault()
-
-        const min = e.target.min
-        const max = e.target.max
-        const currentVal = e.target.value
-
-        setFovBackground(((currentVal - min) / (max - min)) * 100 + '% 100%')
-    }
-
     const handleFullscreenToggle = useCallback(async () => {
         if (!document.fullscreenElement) {
-            // Enter fullscreen
             if (document.documentElement.requestFullscreen) {
                 await document.documentElement.requestFullscreen()
             } else if (document.documentElement.webkitRequestFullscreen) {
-                // Chrome/Safari
                 await document.documentElement.webkitRequestFullscreen()
             }
             setFullScreen(true)
         } else {
-            // Exit fullscreen
             if (document.exitFullscreen) {
                 await document.exitFullscreen()
             } else if (document.webkitExitFullscreen) {
-                // Chrome/Safari
                 await document.webkitExitFullscreen()
             }
             setFullScreen(false)
         }
     }, [])
 
-    // Listen for fullscreen changes
     useEffect(() => {
         const handleFullscreenChange = () => {
             setFullScreen(!!document.fullscreenElement)

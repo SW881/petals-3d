@@ -40,16 +40,12 @@ const GuidePlane = ({
 
     const smoothPoints = useCallback((points, percentage) => {
         if (percentage === 0 || points.length < 3) {
-            return points // No smoothing or not enough points for smoothing
+            return points
         }
 
-        // Map percentage (0-100) to a window size (e.g., 0 to 10 points)
-        // Adjust maxWindowSize based on how smooth you want 100% to be
         const maxWindowSize = 10
         const windowSize = Math.ceil((percentage / 100) * maxWindowSize)
 
-        // Ensure windowSize is at least 1 and not larger than points.length - 2
-        // We need at least one point before and after the current point for averaging
         const actualWindowSize = Math.max(
             1,
             Math.min(windowSize, Math.floor((points.length - 1) / 2))
@@ -60,7 +56,6 @@ const GuidePlane = ({
             const sum = new THREE.Vector3()
             let count = 0
 
-            // Average points around the current point
             for (let j = -actualWindowSize; j <= actualWindowSize; j++) {
                 const index = i + j
                 if (index >= 0 && index < points.length) {
@@ -151,7 +146,6 @@ const GuidePlane = ({
             const { point, normal } = intersection
 
             if (drawGuide) {
-                // Clean up any incomplete drawing before starting new one
                 if (currentLine.current) {
                     scene.remove(currentLine.current.mesh)
                     currentLine.current = null
@@ -160,28 +154,25 @@ const GuidePlane = ({
                     scene.remove(currentCircleObject.current.mesh)
                     currentCircleObject.current = null
                 }
-                // Clear any pending circle timer
+
                 if (circleHoldTimerId.current) {
                     clearTimeout(circleHoldTimerId.current)
                     circleHoldTimerId.current = null
                 }
                 setIsHoldingForCircle(false)
 
-                // --- NEW: Reset raw points at the start of a new stroke ---
                 rawDrawingPoints.current = [point.clone()]
 
-                // Start circle hold timer
                 circleCenterPoint.current = point.clone()
 
                 circleHoldTimerId.current = setTimeout(() => {
                     setIsHoldingForCircle(true)
-                    // If line drawing was initiated but then circle hold happened
+
                     if (currentLine.current) {
                         scene.remove(currentLine.current.mesh)
                         currentLine.current = null
                     }
 
-                    // --- NEW: Clear raw drawing points if switching to circle ---
                     rawDrawingPoints.current = []
 
                     const initialRadius = 0.01
@@ -193,7 +184,7 @@ const GuidePlane = ({
 
                     let circleLine = customCubeLine(
                         circlePoints,
-                        1, // Full opacity for drawing
+                        1,
                         0.1,
                         'Guide_Line',
                         '#000000',
@@ -202,7 +193,7 @@ const GuidePlane = ({
                     )
                     currentCircleObject.current = circleLine
                     scene.add(circleLine.mesh)
-                }, 500) // 500ms hold for circle
+                }, 500)
             }
         },
         [getPlaneIntersection, scene, drawGuide, generateCirclePointsWorld]
@@ -211,7 +202,7 @@ const GuidePlane = ({
     const handlePointerMove = useCallback(
         (e) => {
             e.stopPropagation()
-            if (!pointerDown) return // Only process if mouse is down
+            if (!pointerDown) return
 
             const intersection = getPlaneIntersection(e)
             if (!intersection) {
@@ -238,7 +229,7 @@ const GuidePlane = ({
                     normal,
                     radius
                 )
-                currentCircleObject.current.pts = circlePoints // Update the points data
+                currentCircleObject.current.pts = circlePoints
 
                 scene.traverse(function (object) {
                     if (object.userData['temp']) {
@@ -250,7 +241,7 @@ const GuidePlane = ({
 
                 let circleLine = customCubeLine(
                     circlePoints,
-                    1, // Full opacity for drawing
+                    1,
                     0.1,
                     'Guide_Line',
                     '#000000',
@@ -261,19 +252,17 @@ const GuidePlane = ({
                 return
             }
 
-            // If not holding for circle but timer was running, convert to line draw
             if (circleHoldTimerId.current && drawGuide) {
                 clearTimeout(circleHoldTimerId.current)
                 circleHoldTimerId.current = null
                 if (!currentLine.current) {
-                    // Start line with the current point (from previous circle center) and new point
                     rawDrawingPoints.current = [
                         circleCenterPoint.current.clone(),
-                    ] // Start raw points with the initial click
+                    ]
 
                     const initialLinePoints = straightHandStroke
                         ? [circleCenterPoint.current.clone(), point.clone()]
-                        : [circleCenterPoint.current.clone()] // For free_hand, start with the first point
+                        : [circleCenterPoint.current.clone()]
 
                     currentLine.current = customCubeLine(
                         [
@@ -289,17 +278,16 @@ const GuidePlane = ({
                         true
                     )
 
-                    // Adds line to scene PenIcon Call - 1
                     scene.add(currentLine.current.mesh)
                 }
             }
 
-            if (!currentLine.current) return // If no line is being drawn
+            if (!currentLine.current) return
 
             const { geometry } = currentLine.current
 
             if (straightHandStroke && drawGuide) {
-                const startPoint = rawDrawingPoints.current[0] // Always use the very first point for straight line start
+                const startPoint = rawDrawingPoints.current[0]
                 if (startPoint) {
                     const delta = new THREE.Vector3().subVectors(
                         point,
@@ -307,16 +295,12 @@ const GuidePlane = ({
                     )
                     const length = delta.length()
 
-                    // Calculate local plane axes for snapping
-                    const planeZ = normal.clone() // The normal is the plane's local Z-axis
-                    // Attempt to find a consistent 'right' vector relative to the plane.
-                    // If camera.up is nearly parallel to planeZ, choose another direction.
+                    const planeZ = normal.clone()
                     const tempX = new THREE.Vector3().crossVectors(
                         planeZ,
                         camera.up
                     )
                     if (tempX.lengthSq() < 0.0001) {
-                        // If camera.up is parallel to planeZ, use global X transformed
                         tempX
                             .set(1, 0, 0)
                             .applyQuaternion(
@@ -330,22 +314,18 @@ const GuidePlane = ({
                     const planeX = tempX.normalize()
                     const planeY = new THREE.Vector3()
                         .crossVectors(planeX, planeZ)
-                        .normalize() // Plane's local Y-axis
+                        .normalize()
 
-                    // Project delta onto the plane and express it in the plane's local 2D space
                     const localDeltaX = delta.dot(planeX)
                     const localDeltaY = delta.dot(planeY)
 
-                    // Calculate angle in the plane's local 2D space
                     let angleRad = Math.atan2(localDeltaY, localDeltaX)
                     const angleDeg = THREE.MathUtils.radToDeg(angleRad)
 
-                    // Snap the angle
                     const snappedDeg =
                         Math.round(angleDeg / snapAngle) * snapAngle
                     const snappedRad = THREE.MathUtils.degToRad(snappedDeg)
 
-                    // Reconstruct the snapped direction in 3D using the plane's local axes
                     const snappedDirection = new THREE.Vector3()
                         .addScaledVector(planeX, Math.cos(snappedRad))
                         .addScaledVector(planeY, Math.sin(snappedRad))
@@ -388,11 +368,9 @@ const GuidePlane = ({
                         true
                     )
 
-                    // Adds line to scene PenIcon Call - 1
                     scene.add(newCustomLine.mesh)
                 }
             } else {
-                // Freehand drawing: Add raw points and then smooth
                 const lastRawPoint =
                     rawDrawingPoints.current[
                         rawDrawingPoints.current.length - 1
@@ -412,14 +390,13 @@ const GuidePlane = ({
                                 .addScaledVector(direction, pointDensity * i)
                             rawDrawingPoints.current.push(interpolated)
                         }
-                        rawDrawingPoints.current.push(point.clone()) // Add the current exact point
+                        rawDrawingPoints.current.push(point.clone())
 
-                        // --- Apply smoothing here ---
                         const smoothedPts = smoothPoints(
                             rawDrawingPoints.current,
                             250
                         )
-                        currentLine.current.pts = smoothedPts // Update the line's points with smoothed ones
+                        currentLine.current.pts = smoothedPts
 
                         scene.traverse(function (object) {
                             if (object.userData['temp']) {
@@ -480,7 +457,7 @@ const GuidePlane = ({
                         circlePts.length > 1 &&
                         circlePts[0].distanceTo(
                             circlePts[Math.floor(circlePts.length / 2)]
-                        ) < 0.1 // Small radius threshold
+                        ) < 0.1
                     ) {
                         scene.remove(currentCircleObject.current.mesh)
                     } else {
@@ -506,7 +483,6 @@ const GuidePlane = ({
                         currentCircleObject.current.geometry.dispose()
                         currentCircleObject.current.material.dispose()
 
-                        // Add Ribbon Mesh Guide
                         allGuideObjects.current =
                             allGuideObjects.current.filter(
                                 (obj) => obj !== currentCircleObject.current
@@ -525,13 +501,11 @@ const GuidePlane = ({
 
                         if (ribbonGeometry) {
                             const ribbonMaterial = new THREE.MeshBasicMaterial({
-                                // visible: true,
                                 color: 0xe5e4e2,
                                 side: THREE.DoubleSide,
                                 forceSinglePass: true,
                                 transparent: true,
                                 opacity: 0.1,
-                                // wireframe: false,
                             })
                             const ribbonMesh = new THREE.Mesh(
                                 ribbonGeometry,
@@ -549,12 +523,11 @@ const GuidePlane = ({
                     }
                     currentCircleObject.current = null
                 } else if (currentLine.current) {
-                    // LINE Guide Geom
                     const { pts, mesh } = currentLine.current
 
                     const isTooShort =
-                        (straightHandStroke && pts.length < 2) || // Straight line needs at least 2 points
-                        (!straightHandStroke && pts.length <= 3) // Freehand needs a few points
+                        (straightHandStroke && pts.length < 2) ||
+                        (!straightHandStroke && pts.length <= 3)
 
                     if (isTooShort) {
                         scene.remove(mesh)
@@ -582,7 +555,6 @@ const GuidePlane = ({
                         currentLine.current.geometry.dispose()
                         currentLine.current.material.dispose()
 
-                        // Add Ribbon Mesh Guide
                         allGuideObjects.current =
                             allGuideObjects.current.filter(
                                 (obj) => obj !== currentCircleObject.current
@@ -601,42 +573,17 @@ const GuidePlane = ({
 
                         if (ribbonGeometry) {
                             const ribbonMaterial = new THREE.MeshBasicMaterial({
-                                // visible: true,
                                 color: 0xe5e4e2,
                                 side: THREE.DoubleSide,
                                 forceSinglePass: true,
                                 transparent: true,
                                 opacity: 0.1,
-                                // wireframe: false,
                             })
-
-                            // const ribbonMaterial =
-                            //     new THREE.MeshStandardMaterial({
-                            //         // color: new THREE.Color(color),
-                            //         // opacity: opacity,
-                            //         // transparent: true,
-                            //         // side: THREE.DoubleSide,
-                            // forceSinglePass: true,
-                            //         // depthTest: true,
-                            //         // depthWrite: true,
-                            //         // vertexColors: false,
-
-                            //         visible: true,
-                            //         color: 0xfafafa,
-                            //         side: THREE.DoubleSide,
-                            // forceSinglePass: true,
-                            //         transparent: true,
-                            //         opacity: 1,
-                            //         // roughness: 1,
-                            //         // metalness: 0,
-                            //     })
 
                             const ribbonMesh = new THREE.Mesh(
                                 ribbonGeometry,
                                 ribbonMaterial
                             )
-                            // ribbonMesh.castShadow = true // ✅ cast shadow
-                            // ribbonMesh.receiveShadow = true // ✅ receive shadow (if needed)
                             scene.add(ribbonMesh)
                             allGuideObjects.current.push({
                                 mesh: ribbonMesh,
@@ -700,7 +647,6 @@ const GuidePlane = ({
                     <planeGeometry args={[4000, 4000]} />
                     <meshBasicMaterial
                         visible={false}
-                        // wireframe={true}
                         color="#f0f0f0"
                         transparent
                         opacity={0}

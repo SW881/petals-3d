@@ -2,8 +2,8 @@ import React, { useRef, useCallback } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
-import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
-import { canvasViewStore } from '../../../hooks/useCanvasViewStore'
+import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
+import { canvasViewStore } from '../../hooks/useCanvasViewStore'
 
 import {
     smoothArray,
@@ -12,9 +12,9 @@ import {
     generateCirclePointsWorld,
     getSnappedLinePointsInPlane,
     generateSemiCircleOpenArcWorld,
-} from '../../../helpers/drawHelper'
+} from '../../helpers/drawHelper'
 
-import { bendOGGuide } from '../../../helpers/bendGuideHelper'
+import { bendOGGuide } from '../../helpers/bendGuideHelper'
 
 const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
     const { camera, scene, gl } = useThree()
@@ -381,20 +381,15 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
             }
 
             // Generate Bend Guide
-            const wrappedRibbon = bendOGGuide(
-                ogGuidePoints, // Vector3[] cross-section
-                points, // Vector3[] path
-                1, // shapeScale
-                {
-                    minPathSamples: 16,
-                    maxPathSamples: 128,
-                    minProfileSegments: 8,
-                    maxProfileSegments: 32,
-                    closedPath: false,
-                    guidePointNormals: ogGuideNormals, // Vector3[] normals for profile (optional)
-                    guidePathPointNormals: normals, // Vector3[] normals for path (locks orientation!)
-                }
-            )
+            const wrappedRibbon = bendOGGuide(ogGuidePoints, points, 1, {
+                minPathSamples: 16,
+                maxPathSamples: 128,
+                minProfileSegments: 8,
+                maxProfileSegments: 32,
+                closedPath: false,
+                guidePointNormals: ogGuideNormals,
+                guidePathPointNormals: normals,
+            })
 
             if (wrappedRibbon) {
                 const ribbonMaterial = new THREE.MeshBasicMaterial({
@@ -438,20 +433,15 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
             updateLine(currentMesh, circlePoints, finalPressures, circleNormals)
 
             // Generate Bend Guide
-            const wrappedRibbon = bendOGGuide(
-                ogGuidePoints, // Vector3[] cross-section
-                circlePoints, // Vector3[] path
-                1, // shapeScale
-                {
-                    minPathSamples: 16,
-                    maxPathSamples: 128,
-                    minProfileSegments: 8,
-                    maxProfileSegments: 32,
-                    closedPath: true,
-                    guidePointNormals: ogGuideNormals, // Vector3[] normals for profile (optional)
-                    guidePathPointNormals: circleNormals, // Vector3[] normals for path (locks orientation!)
-                }
-            )
+            const wrappedRibbon = bendOGGuide(ogGuidePoints, circlePoints, 1, {
+                minPathSamples: 16,
+                maxPathSamples: 128,
+                minProfileSegments: 8,
+                maxProfileSegments: 32,
+                closedPath: true,
+                guidePointNormals: ogGuideNormals,
+                guidePathPointNormals: circleNormals,
+            })
 
             if (wrappedRibbon) {
                 const ribbonMaterial = new THREE.MeshBasicMaterial({
@@ -495,20 +485,15 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
             updateLine(currentMesh, arcPoints, arcPressures, arcNormals)
 
             // Generate Bend Guide
-            const wrappedRibbon = bendOGGuide(
-                ogGuidePoints, // Vector3[] cross-section
-                arcPoints, // Vector3[] path
-                1, // shapeScale
-                {
-                    minPathSamples: 16,
-                    maxPathSamples: 128,
-                    minProfileSegments: 8,
-                    maxProfileSegments: 32,
-                    closedPath: false,
-                    guidePointNormals: ogGuideNormals, // Vector3[] normals for profile (optional)
-                    guidePathPointNormals: arcNormals, // Vector3[] normals for path (locks orientation!)
-                }
-            )
+            const wrappedRibbon = bendOGGuide(ogGuidePoints, arcPoints, 1, {
+                minPathSamples: 16,
+                maxPathSamples: 128,
+                minProfileSegments: 8,
+                maxProfileSegments: 32,
+                closedPath: false,
+                guidePointNormals: ogGuideNormals,
+                guidePathPointNormals: arcNormals,
+            })
 
             if (wrappedRibbon) {
                 const ribbonMaterial = new THREE.MeshBasicMaterial({
@@ -541,7 +526,6 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
         startPoint = null
         currentNormal = null
         isDrawing = false
-        // Save data to indexdb
     }
 
     const getPlaneIntersection = useCallback(

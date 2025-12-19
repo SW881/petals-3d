@@ -3,8 +3,9 @@ import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
-import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
-import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
+import { dashboardStore } from '../../hooks/useDashboardStore'
+import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
+import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
 
 import {
     smoothArray,
@@ -18,9 +19,9 @@ import {
     generateCirclePointsWorld,
     getSnappedLinePointsInPlane,
     generateSemiCircleOpenArcWorld,
-} from '../../../helpers/drawHelper'
+} from '../../helpers/drawHelper'
 
-import { saveGroupToIndexDB } from '../../../db/storage'
+import { saveGroupToIndexDB } from '../../db/storage'
 
 const DrawLine = () => {
     const { camera, scene, gl } = useThree()
@@ -1339,18 +1340,18 @@ const DrawLine = () => {
             let ogGeometries = []
             for (let i = 0; i <= 3; i++) {
                 const oldMesh = currentMeshRef.current[i]
-                let geometry = currentMeshRef.current[i].geometry
-                geometry.computeBoundingBox()
-                geometry.computeBoundingSphere()
-                ogGeometries.push(geometry)
+
+                oldMesh.updateMatrixWorld(true)
+
+                const g = oldMesh.geometry.clone()
+                ogGeometries.push(g)
 
                 scene.remove(oldMesh)
                 oldMesh.geometry.dispose()
-
                 if (Array.isArray(oldMesh.material)) {
                     oldMesh.material.forEach((m) => m.dispose())
-                } else if (oldMesh.material) {
-                    oldMesh.material.dispose()
+                } else {
+                    oldMesh.material?.dispose()
                 }
             }
 
@@ -1359,35 +1360,26 @@ const DrawLine = () => {
                 false
             )
 
-            if (!mergedGeo.attributes.color) {
-                const count = mergedGeo.attributes.position.count
-                const colors = new Float32Array(count * 4)
+            const finalGeo = mergedGeo.toNonIndexed()
+            mergedGeo.dispose()
 
-                const strokeColorObj = new THREE.Color(strokeColor)
-                for (let i = 0; i < count; i++) {
-                    colors[i * 4 + 0] = strokeColorObj.r
-                    colors[i * 4 + 1] = strokeColorObj.g
-                    colors[i * 4 + 2] = strokeColorObj.b
-                    colors[i * 4 + 3] = strokeOpacity ?? 1.0
-                }
+            finalGeo.computeVertexNormals()
+            finalGeo.computeBoundingBox()
+            finalGeo.computeBoundingSphere()
 
-                mergedGeo.setAttribute(
-                    'color',
-                    new THREE.BufferAttribute(colors, 4)
-                )
-            }
-
-            let material = getActiveMaterial(
+            const material = getActiveMaterial(
                 activeMaterialType,
                 strokeOpacity,
                 strokeColor
             )
 
-            const combinedMesh = new THREE.Mesh(mergedGeo, material)
-            combinedMesh.geometry.toNonIndexed()
-            combinedMesh.geometry.computeVertexNormals()
-            combinedMesh.geometry.computeBoundingBox()
-            combinedMesh.geometry.computeBoundingSphere()
+            const combinedMesh = new THREE.Mesh(finalGeo, material)
+
+            combinedMesh.position.set(0, 0, 0)
+            combinedMesh.quaternion.identity()
+            combinedMesh.scale.set(1, 1, 1)
+
+            combinedMesh.updateMatrixWorld(true)
 
             ogLineData = {
                 type: 'LINE',
@@ -1398,6 +1390,8 @@ const DrawLine = () => {
                 normals: normalsRef.current,
                 pressures: pressuresRef.current,
                 loft_points: pointsRef.current,
+                optimization_threshold: OPTIMIZATION_THRESHOLD,
+                smooth_percentage: SMOOTH_PERCENTAGE,
                 color: strokeColor,
                 width: strokeWidth,
                 opacity: strokeOpacity,
@@ -1410,9 +1404,7 @@ const DrawLine = () => {
                 rotation: { x: 0, y: 0, z: 0, w: 1 },
                 scale: { x: 1, y: 1, z: 1 },
                 visible: combinedMesh.visible,
-                matrix: Array.from(combinedMesh.matrix.elements),
             }
-
             combinedMesh.userData = ogLineData
             scene.add(combinedMesh)
 
@@ -1461,6 +1453,8 @@ const DrawLine = () => {
                     normals: mirrorDataRef.current[mode].normals,
                     pressures: mirrorDataRef.current[mode].pressures,
                     loft_points: mirrorDataRef.current[mode].points,
+                    optimization_threshold: OPTIMIZATION_THRESHOLD,
+                    smooth_percentage: SMOOTH_PERCENTAGE,
                     color: strokeColor,
                     width: strokeWidth,
                     opacity: strokeOpacity,
@@ -1473,7 +1467,6 @@ const DrawLine = () => {
                     rotation: { x: 0, y: 0, z: 0, w: 1 },
                     scale: { x: 1, y: 1, z: 1 },
                     visible: combinedMesh.visible,
-                    matrix: Array.from(combinedMirrorMesh.matrix.elements),
                 }
                 mirrorLineData.push(mData)
                 combinedMirrorMesh.userData = mData
@@ -1498,52 +1491,47 @@ const DrawLine = () => {
             let ogGeometries = []
             for (let i = 0; i <= 3; i++) {
                 const oldMesh = currentMeshRef.current[i]
-                let geometry = currentMeshRef.current[i].geometry
-                geometry.computeBoundingBox()
-                geometry.computeBoundingSphere()
-                ogGeometries.push(geometry)
+
+                oldMesh.updateMatrixWorld(true)
+
+                const g = oldMesh.geometry.clone()
+
+                ogGeometries.push(g)
 
                 scene.remove(oldMesh)
                 oldMesh.geometry.dispose()
-
                 if (Array.isArray(oldMesh.material)) {
                     oldMesh.material.forEach((m) => m.dispose())
-                } else if (oldMesh.material) {
-                    oldMesh.material.dispose()
+                } else {
+                    oldMesh.material?.dispose()
                 }
             }
 
-            const mergedGeo = BufferGeometryUtils.mergeGeometries(ogGeometries)
+            const mergedGeo = BufferGeometryUtils.mergeGeometries(
+                ogGeometries,
+                false
+            )
 
-            if (!mergedGeo.attributes.color) {
-                const count = mergedGeo.attributes.position.count
-                const colors = new Float32Array(count * 4)
+            const finalGeo = mergedGeo.toNonIndexed()
+            mergedGeo.dispose()
 
-                const strokeColorObj = new THREE.Color(strokeColor)
-                for (let i = 0; i < count; i++) {
-                    colors[i * 4 + 0] = strokeColorObj.r
-                    colors[i * 4 + 1] = strokeColorObj.g
-                    colors[i * 4 + 2] = strokeColorObj.b
-                    colors[i * 4 + 3] = strokeOpacity ?? 1.0
-                }
+            finalGeo.computeVertexNormals()
+            finalGeo.computeBoundingBox()
+            finalGeo.computeBoundingSphere()
 
-                mergedGeo.setAttribute(
-                    'color',
-                    new THREE.BufferAttribute(colors, 4)
-                )
-            }
-
-            let material = getActiveMaterial(
+            const material = getActiveMaterial(
                 activeMaterialType,
                 strokeOpacity,
                 strokeColor
             )
 
-            const combinedMesh = new THREE.Mesh(mergedGeo, material)
-            combinedMesh.geometry.toNonIndexed()
-            combinedMesh.geometry.computeVertexNormals()
-            combinedMesh.geometry.computeBoundingBox()
-            combinedMesh.geometry.computeBoundingSphere()
+            const combinedMesh = new THREE.Mesh(finalGeo, material)
+
+            combinedMesh.position.set(0, 0, 0)
+            combinedMesh.quaternion.identity()
+            combinedMesh.scale.set(1, 1, 1)
+
+            combinedMesh.updateMatrixWorld(true)
 
             ogLineData = {
                 type: 'LINE',
@@ -1554,6 +1542,8 @@ const DrawLine = () => {
                 normals: circleNormals,
                 pressures: finalPressures,
                 loft_points: circlePoints,
+                optimization_threshold: OPTIMIZATION_THRESHOLD,
+                smooth_percentage: SMOOTH_PERCENTAGE,
                 color: strokeColor,
                 width: strokeWidth,
                 opacity: strokeOpacity,
@@ -1562,12 +1552,25 @@ const DrawLine = () => {
                 uuid: combinedMesh.uuid,
                 group_id: activeGroup.uuid,
                 material_type: activeMaterialType,
-                position: { x: 0, y: 0, z: 0 },
-                rotation: { x: 0, y: 0, z: 0, w: 1 },
-                scale: { x: 1, y: 1, z: 1 },
+                position: {
+                    x: combinedMesh.position.x,
+                    y: combinedMesh.position.y,
+                    z: combinedMesh.position.z,
+                },
+                rotation: {
+                    x: combinedMesh.quaternion.x,
+                    y: combinedMesh.quaternion.y,
+                    z: combinedMesh.quaternion.z,
+                    w: combinedMesh.quaternion.w,
+                },
+                scale: {
+                    x: combinedMesh.scale.x,
+                    y: combinedMesh.scale.y,
+                    z: combinedMesh.scale.z,
+                },
                 visible: combinedMesh.visible,
-                matrix: Array.from(combinedMesh.matrix.elements),
             }
+
             combinedMesh.userData = ogLineData
             scene.add(combinedMesh)
 
@@ -1616,6 +1619,8 @@ const DrawLine = () => {
                     normals: mirrorDataRef.current[mode].normals,
                     pressures: mirrorDataRef.current[mode].pressures,
                     loft_points: mirrorDataRef.current[mode].points,
+                    optimization_threshold: OPTIMIZATION_THRESHOLD,
+                    smooth_percentage: SMOOTH_PERCENTAGE,
                     color: strokeColor,
                     width: strokeWidth,
                     opacity: strokeOpacity,
@@ -1651,54 +1656,49 @@ const DrawLine = () => {
             )
 
             let ogGeometries = []
+
             for (let i = 0; i <= 3; i++) {
                 const oldMesh = currentMeshRef.current[i]
-                let geometry = currentMeshRef.current[i].geometry
-                geometry.computeBoundingBox()
-                geometry.computeBoundingSphere()
-                ogGeometries.push(geometry)
+
+                oldMesh.updateMatrixWorld(true)
+
+                const g = oldMesh.geometry.clone()
+                ogGeometries.push(g)
 
                 scene.remove(oldMesh)
                 oldMesh.geometry.dispose()
-
                 if (Array.isArray(oldMesh.material)) {
                     oldMesh.material.forEach((m) => m.dispose())
-                } else if (oldMesh.material) {
-                    oldMesh.material.dispose()
+                } else {
+                    oldMesh.material?.dispose()
                 }
             }
 
-            const mergedGeo = BufferGeometryUtils.mergeGeometries(ogGeometries)
+            const mergedGeo = BufferGeometryUtils.mergeGeometries(
+                ogGeometries,
+                false
+            )
 
-            if (!mergedGeo.attributes.color) {
-                const count = mergedGeo.attributes.position.count
-                const colors = new Float32Array(count * 4)
+            const finalGeo = mergedGeo.toNonIndexed()
+            mergedGeo.dispose()
 
-                const strokeColorObj = new THREE.Color(strokeColor)
-                for (let i = 0; i < count; i++) {
-                    colors[i * 4 + 0] = strokeColorObj.r
-                    colors[i * 4 + 1] = strokeColorObj.g
-                    colors[i * 4 + 2] = strokeColorObj.b
-                    colors[i * 4 + 3] = strokeOpacity ?? 1.0
-                }
+            finalGeo.computeVertexNormals()
+            finalGeo.computeBoundingBox()
+            finalGeo.computeBoundingSphere()
 
-                mergedGeo.setAttribute(
-                    'color',
-                    new THREE.BufferAttribute(colors, 4)
-                )
-            }
-
-            let material = getActiveMaterial(
+            const material = getActiveMaterial(
                 activeMaterialType,
                 strokeOpacity,
                 strokeColor
             )
 
-            const combinedMesh = new THREE.Mesh(mergedGeo, material)
-            combinedMesh.geometry.toNonIndexed()
-            combinedMesh.geometry.computeVertexNormals()
-            combinedMesh.geometry.computeBoundingBox()
-            combinedMesh.geometry.computeBoundingSphere()
+            const combinedMesh = new THREE.Mesh(finalGeo, material)
+
+            combinedMesh.position.set(0, 0, 0)
+            combinedMesh.quaternion.identity()
+            combinedMesh.scale.set(1, 1, 1)
+
+            combinedMesh.updateMatrixWorld(true)
 
             ogLineData = {
                 type: 'LINE',
@@ -1709,6 +1709,8 @@ const DrawLine = () => {
                 normals: arcNormals,
                 pressures: arcFinalPressures,
                 loft_points: arcPoints,
+                optimization_threshold: OPTIMIZATION_THRESHOLD,
+                smooth_percentage: SMOOTH_PERCENTAGE,
                 color: strokeColor,
                 width: strokeWidth,
                 opacity: strokeOpacity,
@@ -1717,11 +1719,23 @@ const DrawLine = () => {
                 uuid: combinedMesh.uuid,
                 group_id: activeGroup.uuid,
                 material_type: activeMaterialType,
-                position: { x: 0, y: 0, z: 0 },
-                rotation: { x: 0, y: 0, z: 0, w: 1 },
-                scale: { x: 1, y: 1, z: 1 },
+                position: {
+                    x: combinedMesh.position.x,
+                    y: combinedMesh.position.y,
+                    z: combinedMesh.position.z,
+                },
+                rotation: {
+                    x: combinedMesh.quaternion.x,
+                    y: combinedMesh.quaternion.y,
+                    z: combinedMesh.quaternion.z,
+                    w: combinedMesh.quaternion.w,
+                },
+                scale: {
+                    x: combinedMesh.scale.x,
+                    y: combinedMesh.scale.y,
+                    z: combinedMesh.scale.z,
+                },
                 visible: combinedMesh.visible,
-                matrix: Array.from(combinedMesh.matrix.elements),
             }
             combinedMesh.userData = ogLineData
             scene.add(combinedMesh)
@@ -1770,6 +1784,8 @@ const DrawLine = () => {
                     normals: mirrorDataRef.current[mode].normals,
                     pressures: mirrorDataRef.current[mode].pressures,
                     loft_points: mirrorDataRef.current[mode].points,
+                    optimization_threshold: OPTIMIZATION_THRESHOLD,
+                    smooth_percentage: SMOOTH_PERCENTAGE,
                     color: strokeColor,
                     width: strokeWidth,
                     opacity: strokeOpacity,
@@ -1782,7 +1798,6 @@ const DrawLine = () => {
                     rotation: { x: 0, y: 0, z: 0, w: 1 },
                     scale: { x: 1, y: 1, z: 1 },
                     visible: combinedMesh.visible,
-                    matrix: Array.from(combinedMirrorMesh.matrix.elements),
                 }
                 mirrorLineData.push(mData)
                 combinedMirrorMesh.userData = mData
@@ -1801,21 +1816,13 @@ const DrawLine = () => {
         currentNormalRef.current = null
         isDrawingRef.current = false
 
-        // Save data to indexdb
-        // let targetObject = canvasRenderStore
-        //     .getState()
-        //     .groupData.find((obj) => obj.uuid === activeGroup.uuid)
-        // if (targetObject) {
-        //     targetObject.objects.push(ogLineData)
-        //     targetObject.objects.push(...mirrorLineData)
-        // }
-        // setGroupData([...groupData])
-        // console.log(
-        //     'Updated group data after add :',
-        //     canvasRenderStore.getState().groupData
-        // )
-        // await saveGroupToIndexDB(canvasRenderStore.getState().groupData)
-        // console.log({ scene })
+        if (activeGroup) {
+            activeGroup.objects.push(ogLineData)
+            activeGroup.objects.push(...mirrorLineData)
+        }
+        setGroupData([...groupData])
+
+        await saveGroupToIndexDB(canvasRenderStore.getState().groupData)
     }
 
     return (

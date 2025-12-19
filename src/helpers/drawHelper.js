@@ -1,125 +1,126 @@
 import * as THREE from 'three'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
-export const generateScene = (scene, groupData) => {
+export const generateScene = (scene, gD) => {
     try {
-        for (let group of groupData) {
-            for (let line of group.objects) {
-                const currentMesh = [null, null, null, null]
-                let ogGeometries = []
+        let newGeneratedGroups = []
+        for (let i = 0; i < gD.length; i++) {
+            const group = gD[i]
 
-                for (let i = 0; i <= 3; i++) {
-                    currentMesh[i] = createInitialLineMesh(
-                        scene,
-                        line.color,
-                        line.opacity,
-                        line.material_type,
-                        50000,
-                        line.is_mirror,
-                        i
-                    )
+            if (!group.deleted_at) {
+                for (let j = 0; j < group.objects.length; j++) {
+                    const line = group.objects[j]
+                    if (!line.is_deleted) {
+                        const currentMesh = [null, null, null, null]
+                        let ogGeometries = []
 
-                    console.log('Updating line..')
-                    updateLine(
-                        i,
-                        currentMesh[i],
-                        line.width,
-                        line.stroke_opacity,
-                        line.stroke_type,
-                        line.color,
-                        line.points,
-                        line.pressures,
-                        line.normals
-                    )
+                        for (let k = 0; k <= 3; k++) {
+                            currentMesh[k] = createInitialLineMesh(
+                                scene,
+                                line.color,
+                                line.opacity,
+                                line.material_type,
+                                50000,
+                                line.is_mirror,
+                                k
+                            )
 
-                    const oldMesh = currentMesh[i]
-                    let geometry = currentMesh[i].geometry
-                    geometry.computeBoundingBox()
-                    geometry.computeBoundingSphere()
-                    ogGeometries.push(geometry)
+                            updateLine(
+                                k,
+                                line.optimization_threshold,
+                                line.smooth_percentage,
+                                line.shape_type,
+                                currentMesh[k],
+                                line.width,
+                                line.stroke_opacity,
+                                line.stroke_type,
+                                line.color,
+                                line.points,
+                                line.pressures,
+                                line.normals
+                            )
 
-                    scene.remove(oldMesh)
-                    oldMesh.geometry.dispose()
+                            const oldMesh = currentMesh[k]
+                            let geometry = currentMesh[k].geometry
+                            ogGeometries.push(geometry)
 
-                    if (Array.isArray(oldMesh.material)) {
-                        oldMesh.material.forEach((m) => m.dispose())
-                    } else if (oldMesh.material) {
-                        oldMesh.material.dispose()
+                            scene.remove(oldMesh)
+                            oldMesh.geometry.dispose()
+
+                            if (Array.isArray(oldMesh.material)) {
+                                oldMesh.material.forEach((m) => m.dispose())
+                            } else if (oldMesh.material) {
+                                oldMesh.material.dispose()
+                            }
+                        }
+
+                        const mergedGeo = BufferGeometryUtils.mergeGeometries(
+                            ogGeometries,
+                            false
+                        )
+                        mergedGeo.computeVertexNormals()
+                        mergedGeo.computeBoundingBox()
+                        mergedGeo.computeBoundingSphere()
+
+                        const material = getActiveMaterial(
+                            line.material_type,
+                            line.opacity,
+                            line.color
+                        )
+                        const combinedMesh = new THREE.Mesh(mergedGeo, material)
+
+                        combinedMesh.scale.set(
+                            line.scale.x,
+                            line.scale.y,
+                            line.scale.z
+                        )
+                        combinedMesh.position.copy(line.position)
+                        combinedMesh.quaternion.copy(line.rotation)
+
+                        let ogLineData = {
+                            type: 'LINE',
+                            is_deleted: line.is_deleted,
+                            is_mirror: false,
+                            mirror_mode: 'NA',
+                            points: line.points,
+                            normals: line.normals,
+                            pressures: line.pressures,
+                            loft_points: line.points,
+                            color: line.color,
+                            width: line.width,
+                            opacity: line.opacity,
+                            stroke_type: line.stroke_type,
+                            shape_type: line.shape_type,
+                            uuid: line.uuid,
+                            group_id: line.group_id,
+                            material_type: line.material_type,
+                            position: line.position,
+                            rotation: line.rotation,
+                            scale: line.scale,
+                            visible: combinedMesh.visible,
+                        }
+
+                        combinedMesh.userData = ogLineData
+                        scene.add(combinedMesh)
+                    } else {
+                        group.objects.splice(j, 1)
                     }
                 }
-
-                const mergedGeo = BufferGeometryUtils.mergeGeometries(
-                    ogGeometries,
-                    false
-                )
-
-                if (!mergedGeo.attributes.color) {
-                    const count = mergedGeo.attributes.position.count
-                    const colors = new Float32Array(count * 4)
-
-                    const strokeColorObj = new THREE.Color(line.color)
-                    for (let i = 0; i < count; i++) {
-                        colors[i * 4 + 0] = strokeColorObj.r
-                        colors[i * 4 + 1] = strokeColorObj.g
-                        colors[i * 4 + 2] = strokeColorObj.b
-                        colors[i * 4 + 3] = line.opacity ?? 1.0
-                    }
-
-                    mergedGeo.setAttribute(
-                        'color',
-                        new THREE.BufferAttribute(colors, 4)
-                    )
-                }
-
-                let material = getActiveMaterial(
-                    line.material_type,
-                    line.opacity,
-                    line.color
-                )
-
-                const combinedMesh = new THREE.Mesh(mergedGeo, material)
-                combinedMesh.geometry.toNonIndexed()
-                combinedMesh.geometry.computeVertexNormals()
-                combinedMesh.geometry.computeBoundingBox()
-                combinedMesh.geometry.computeBoundingSphere()
-
-                let ogLineData = {
-                    type: 'LINE',
-                    is_deleted: false,
-                    is_mirror: false,
-                    mirror_mode: 'NA',
-                    points: line.points,
-                    normals: line.normals,
-                    pressures: line.pressures,
-                    loft_points: line.loft_points,
-                    color: line.color,
-                    width: line.width,
-                    opacity: line.opacity,
-                    stroke_type: line.stroke_type,
-                    shape_type: line.shape_type,
-                    uuid: combinedMesh.uuid,
-                    group_id: line.group_id,
-                    material_type: line.material_type,
-                    position: line.position,
-                    rotation: line.rotation,
-                    scale: line.scale,
-                    visible: combinedMesh.visible,
-                    matrix: Array.from(combinedMesh.matrix.elements),
-                }
-
-                combinedMesh.userData = ogLineData
-                scene.add(combinedMesh)
-
-                console.log({ currentMesh })
+                newGeneratedGroups.push(group)
             }
         }
+
+        return { newGeneratedGroups, newScene: scene }
     } catch (error) {
-        console.log('Error while generating scene...')
+        console.log('Error while generating scene... : ', error)
     }
 }
 
 function updateLine(
     stripId,
+    optimizationThreshold,
+    smoothPercentage,
+    shapeType,
     mesh,
     width,
     strokeOpacity,
@@ -137,6 +138,30 @@ function updateLine(
         let pts = rawPts
         let pressures = pressuresArr
         let finalNormals = normalsArr
+
+        if (shapeType === 'free_hand') {
+            pts = smoothPoints(rawPts, smoothPercentage)
+            pressures = smoothArray(pressuresArr, smoothPercentage)
+            const filteredResult = filterPoints(
+                pts,
+                pressures,
+                normalsArr,
+                optimizationThreshold
+            )
+            pts = filteredResult.filteredPts
+            pressures = filteredResult.filteredPressures
+            finalNormals = filteredResult.filteredNormals
+        } else if (shapeType === 'straight') {
+            const filteredResult = filterPoints(
+                pts,
+                pressures,
+                normalsArr,
+                optimizationThreshold
+            )
+            pts = filteredResult.filteredPts
+            pressures = filteredResult.filteredPressures
+            finalNormals = filteredResult.filteredNormals
+        }
 
         if (pts.length < 2) return
 
@@ -309,7 +334,7 @@ function updateLine(
         geometry.index.needsUpdate = true
         geometry.setDrawRange(0, indices.length)
     } catch (error) {
-        console.log('Error while generating lines')
+        console.log('Error while updating lines : ', error)
     }
 }
 
@@ -572,7 +597,11 @@ export const filterPoints = (pts, pressures, normals, tolerance) => {
     let lastKeptIndex = 0
 
     for (let i = 1; i < pts.length; i++) {
-        if (pts[i].distanceTo(pts[lastKeptIndex]) >= tolerance) {
+        if (
+            pts.length === 3
+                ? new THREE.Vector3().fromArray(pts[i])
+                : pts[i].distanceTo(pts[lastKeptIndex]) >= tolerance
+        ) {
             filteredPts.push(pts[i])
             filteredPressures.push(pressures[i])
             filteredNormals.push(normals[i])
@@ -594,7 +623,6 @@ export const filterPoints = (pts, pressures, normals, tolerance) => {
 }
 
 export function createInitialLineMesh(
-    // scene,
     strokeColor,
     strokeOpacity,
     activeMaterialType,
@@ -623,8 +651,6 @@ export function createInitialLineMesh(
     if (mirror && (stripId === 1 || stripId === 2 || stripId === 3)) {
         mesh.visible = false
     }
-
-    // scene.add(mesh)
 
     return mesh
 }
@@ -687,7 +713,6 @@ export function getSnappedLinePointsInPlane({
 
     return {
         snappedEnd,
-        // interpolatedPoints,
     }
 }
 
@@ -696,44 +721,48 @@ export function getActiveMaterial(
     strokeOpacity,
     strokeColor
 ) {
+    let baseColor = new THREE.Color(strokeColor)
     let material
     switch (activeMaterialType) {
         case 'flat':
             material = new THREE.MeshBasicMaterial({
-                vertexColors: true,
+                color: baseColor,
                 wireframe: false,
                 transparent: strokeOpacity < 1,
                 side: THREE.DoubleSide,
                 forceSinglePass: true,
                 depthTest: true,
-                depthWrite: strokeOpacity >= 1,
+                depthWrite: true,
+                opacity: strokeOpacity,
                 blending: THREE.NormalBlending,
             })
             break
 
         case 'shaded':
             material = new THREE.MeshStandardMaterial({
-                vertexColors: true,
+                color: baseColor,
                 wireframe: false,
                 transparent: strokeOpacity < 1,
                 side: THREE.DoubleSide,
                 forceSinglePass: true,
                 depthTest: true,
                 depthWrite: true,
-                blending: THREE.NoBlending,
+                opacity: strokeOpacity,
+                blending: THREE.NormalBlending,
             })
             break
 
         case 'glow':
             material = new THREE.MeshStandardMaterial({
-                vertexColors: true,
+                color: baseColor,
                 wireframe: false,
-                transparent: false,
+                transparent: strokeOpacity < 1,
                 side: THREE.DoubleSide,
                 forceSinglePass: true,
                 depthTest: true,
                 depthWrite: true,
-                blending: THREE.NoBlending,
+                opacity: strokeOpacity,
+                blending: THREE.NormalBlending,
                 emissive: new THREE.Color(strokeColor),
                 emissiveIntensity: 1,
             })

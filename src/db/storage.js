@@ -32,7 +32,6 @@ export const saveGroupToIndexDB = async (groupData) => {
         //         console.log(`Quota: ${quota / 1024 / 1024} MB`)
         //     })
         // }
-        // console.log({ groupData })
         // const sceneKey = `groups-draft-note`
         const sceneKey = 0
         await set(sceneKey, groupData, linesStore)

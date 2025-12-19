@@ -1,52 +1,69 @@
 import React, { useState } from 'react'
+import { v4 as uuid } from 'uuid'
 
-import WrongButtonIcon from '../../../svg-icons/WrongButtonIcon'
+import WrongButtonIcon from '../svg-icons/WrongButtonIcon'
 
-import { saveGroupToIndexDB } from '../../../../db/storage'
-import { dashboardStore } from '../../../../hooks/useDashboardStore'
-import { canvasRenderStore } from '../../../../hooks/useRenderSceneStore'
+import { saveGroupToIndexDB } from '../../db/storage'
 
-const CopyGroups = () => {
-    const { setCopyGroupModal } = dashboardStore((state) => state)
-    const [animateOut, setAnimateOut] = useState(false)
-    const [groupName, setGroupName] = useState('')
+import { dashboardStore } from '../../hooks/useDashboardStore'
+import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
+
+const AddNewGroups = () => {
     const [loading, setLoading] = useState(false)
+    const [groupName, setGroupName] = useState('')
+    const [animateOut, setAnimateOut] = useState(false)
+    const { setNewGroupModal } = dashboardStore((state) => state)
 
-    const {
-        copySelectedGroups,
-        resetSelectedGroups,
-        copyGroups,
-        setCopyGroups,
-    } = canvasRenderStore((state) => state)
+    const { resetSelectedGroups, groupData, addNewGroup, sortGroupsByName } =
+        canvasRenderStore((state) => state)
 
     function handleClose() {
         setAnimateOut(true)
         setGroupName('')
         setTimeout(() => {
-            setCopyGroupModal(false)
+            setNewGroupModal(false)
             setAnimateOut(false)
         }, 200)
     }
 
-    async function handleCopyGroups(e) {
+    function handleNameChange(e) {
+        setGroupName(e.target.value)
+    }
+
+    async function handleCreateNewGroup(e) {
         try {
             setLoading(true)
-            copySelectedGroups()
+            if (!groupName.length > 0) {
+                setLoading(false)
+                return
+            }
 
-            const updatedGroupData = canvasRenderStore.getState().groupData
+            const data = {
+                uuid: uuid(),
+                name: groupName,
+                created_at: new Date().toISOString(),
+                deleted_at: null,
+                visible: true,
+                active: false,
+                objects: [],
+            }
 
-            setCopyGroups(!copyGroups)
+            addNewGroup(data)
+            sortGroupsByName()
+            let gpD = [...groupData, data]
 
-            const response = await saveGroupToIndexDB(updatedGroupData)
+            let response = await saveGroupToIndexDB(gpD)
 
             if (response) {
                 resetSelectedGroups()
                 handleClose()
             } else {
+                setError('Error while saving data')
                 handleClose()
             }
         } catch (error) {
             console.error(error)
+            setError(error.message)
         } finally {
             setLoading(false)
         }
@@ -69,11 +86,11 @@ const CopyGroups = () => {
                         >
                             <div className="flex justify-between items-center text-left text-[12px] md:text-[16px] p-[12px] m-[4px] border-b-[1px] border-[#D9D9D9] funnel-sans-semibold">
                                 <div className="text-[#000000]">
-                                    Copy selected groups
+                                    Create new group
                                 </div>
                                 <div
                                     onClick={(e) => handleClose(e)}
-                                    className="active:scale-90 p-[4px] rounded-[8px] cursor-pointer"
+                                    className="p-[4px] rounded-[8px] cursor-pointer"
                                 >
                                     <WrongButtonIcon
                                         color="#000000"
@@ -81,26 +98,34 @@ const CopyGroups = () => {
                                     />
                                 </div>
                             </div>
-
                             <div className="mx-[20px] mt-[12px]">
-                                <div className="mt-[16px] text-[12px] text-[#000000] text-left">
-                                    Are you sure you want to copy groups ?
+                                <div className="mt-[16px]">
+                                    <label className="text-left text-[12px] block funnel-sans-regular text-[#000000] mb-[8px]">
+                                        Name
+                                    </label>
+                                    <input
+                                        onChange={(e) => handleNameChange(e)}
+                                        type="text"
+                                        className="border-[1px] border-[#d9d9d9] text-[#000000] rounded-[8px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                        required
+                                        disabled={loading}
+                                    />
                                 </div>
                             </div>
                             <div className="mt-[12px] flex justify-end items-center px-4 py-3 gap-[12px]">
                                 <button
                                     onClick={(e) => handleClose(e)}
-                                    className="active:scale-90 text-[#000000] border-[#d9d9d9] border-[1px] px-[12px] py-[4px] rounded-[8px] cursor-pointer"
+                                    className="text-[#000000] border-[#d9d9d9] border-[1px] px-[12px] py-[4px] rounded-[8px] cursor-pointer "
                                 >
                                     Cancel
                                 </button>
 
                                 <button
                                     disabled={loading}
-                                    onClick={(e) => handleCopyGroups(e)}
-                                    className="active:scale-90 text-[#000000] px-[16px] py-[4px] rounded-[8px] border-[#5CA367] bg-[#5CA367]/25 border-[1px] cursor-pointer"
+                                    onClick={(e) => handleCreateNewGroup(e)}
+                                    className="text-[#000000] px-[12px] py-[4px] rounded-[8px] border-[#5CA367] bg-[#5CA367]/25 border-[1px] cursor-pointer"
                                 >
-                                    Copy
+                                    Create
                                 </button>
                             </div>
                         </div>
@@ -111,4 +136,4 @@ const CopyGroups = () => {
     )
 }
 
-export default CopyGroups
+export default AddNewGroups

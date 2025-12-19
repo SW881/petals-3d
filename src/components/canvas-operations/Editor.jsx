@@ -3,8 +3,8 @@ import { v4 as uuid } from 'uuid'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 
 import Canvas3d from './Canvas3d'
-import ToolPanel from './canvas/tools/ToolPanel'
-import ViewsPanel from './canvas/tools/ViewsPanel'
+import ToolPanel from '../tools/ToolPanel'
+import ViewsPanel from '../tools/ViewsPanel'
 
 import PenIcon from '../svg-icons/PenIcon'
 import SaveIcon from '../svg-icons/SaveIcon'
@@ -17,18 +17,17 @@ import BurgerIcon from '../svg-icons/BurgerIcon'
 
 import { dashboardStore } from '../../hooks/useDashboardStore'
 import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
-import { canvasViewStore } from '../../hooks/useCanvasViewStore'
 import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
 
-import ToolTip from '../info/ToolTip'
-import CopyGroups from './canvas/groups/CopyGroups'
-import AddNewGroups from './canvas/groups/AddNewGroups'
-import RenameGroups from './canvas/groups/RenameGroups'
-import DeleteGroups from './canvas/groups/DeleteGroups'
+import ToolTip from '../ToolTip'
+import CopyGroups from '../groups/CopyGroups'
+import AddNewGroups from '../groups/AddNewGroups'
+import RenameGroups from '../groups/RenameGroups'
+import DeleteGroups from '../groups/DeleteGroups'
 
 import { loadSceneFromIndexedDB, saveGroupToIndexDB } from '../../db/storage'
 
-const Editor = () => {
+const Editor = (props) => {
     const [error, setError] = useState(false)
     const [loading, setLoading] = useState(false)
     const [isSmall, setIsSmall] = useState(window.innerWidth < 768)
@@ -51,8 +50,6 @@ const Editor = () => {
     const { addNewGroup, activeScene, setGroupData, setActiveGroup } =
         canvasRenderStore((state) => state)
 
-    const { darkTheme, setDarkTheme } = canvasViewStore((state) => state)
-
     useEffect(() => {
         if (hasRun.current) return
         hasRun.current = true
@@ -67,7 +64,6 @@ const Editor = () => {
 
             const { groupData } = await loadSceneFromIndexedDB()
 
-            // console.log({ groupData })
             if (groupData && groupData.length > 0) {
                 setGroupData(groupData)
                 const activeGroup = groupData.find((g) => g.active)
@@ -342,7 +338,6 @@ const Editor = () => {
             <DisableBrowserGestures />
 
             <div className="flex w-screen h-screen overflow-hidden prevent-select z-5">
-                {/* <div className="bg-[#FFFFFF]"> */}
                 <div className="absolute top-[12px] left-[12px] z-5 flex items-center gap-[4px] p-[4px] rounded-[8px]  border-[1px] border-[#4B5563]/25 bg-[#FFFFFF] hover:bg-[#5CA367]/75">
                     <button
                         onClick={(e) => setShowOptions(!showOptions)}
@@ -351,7 +346,6 @@ const Editor = () => {
                         <BurgerIcon color="#000000" size={isSmall ? 8 : 12} />
                     </button>
                 </div>
-                {/* </div> */}
 
                 {showOptions && (
                     <div className="absolute top-[72px] left-[12px] z-5 flex-col items-center gap-[4px] text-[8px] md:text-[12px] funnel-sans-regular rounded-[8px] bg-[#FFFFFF] border-[1px] border-[#4B5563]/25 drop-shadow-xl ">
@@ -378,7 +372,7 @@ const Editor = () => {
                                 </ToolTip>
                             </li>
 
-                            {/* <li className="flex justify-between items-center text-[8px] m-[4px] md:text-[12px] funnel-sans-regular gap-[12px] hover:bg-[#5CA367]/25 rounded-[4px] cursor-pointer">
+                            <li className="flex justify-between items-center text-[8px] m-[4px] md:text-[12px] funnel-sans-regular gap-[12px] hover:bg-[#5CA367]/25 rounded-[4px] cursor-pointer">
                                 <ToolTip
                                     text="GitHub"
                                     position="bottom-right"
@@ -386,7 +380,7 @@ const Editor = () => {
                                 >
                                     <a
                                         className="flex justify-center items-center font-bold px-[8px] rounded-[4px] cursor-pointer"
-                                        href="https://github.com/SW881/penxil"
+                                        href="https://github.com/SW881/petals-3d"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                     >
@@ -402,54 +396,10 @@ const Editor = () => {
                                         </div>
                                     </a>
                                 </ToolTip>
-                            </li> */}
+                            </li>
 
                             <li className="flex border-b-[1px] border-[#4B5563]/25"></li>
-                            {/* <li className="flex justify-between items-center p-[4px] m-[4px] gap-[12px]">
-                                <div>Theme</div>
-                                <div className="flex justify-between items-center gap-[4px]">
-                                    <ToolTip
-                                        text="Light"
-                                        position="bottom"
-                                        delay={100}
-                                    >
-                                        <button
-                                            onClick={(e) => setDarkTheme(false)}
-                                            className={`flex justify-center font-bold p-[8px] rounded-[4px] cursor-pointer ${
-                                                !darkTheme
-                                                    ? 'bg-[#5CA367]'
-                                                    : 'hover:bg-[#5CA367]/25'
-                                            }`}
-                                        >
-                                            <LightIcon
-                                                color="#000000"
-                                                size={isSmall ? 12 : 20}
-                                            />
-                                        </button>
-                                    </ToolTip>
 
-                                    <ToolTip
-                                        text="Dark"
-                                        position="bottom"
-                                        delay={100}
-                                    >
-                                        <button
-                                            onClick={(e) => setDarkTheme(true)}
-                                            className={`flex justify-center font-bold p-[8px] rounded-[4px] cursor-pointer ${
-                                                darkTheme
-                                                    ? 'bg-[#5CA367]'
-                                                    : 'hover:bg-[#5CA367]/25'
-                                            }`}
-                                        >
-                                            <DarkIcon
-                                                color="#000000"
-                                                size={isSmall ? 12 : 20}
-                                            />
-                                        </button>
-                                    </ToolTip>
-                                </div>
-                            </li> */}
-                            {/* <li className="flex border-b-[1px] border-[#4B5563]/25"></li> */}
                             <li className="flex justify-between items-center p-[4px] m-[4px] gap-[12px]">
                                 <div>Pointer</div>
                                 <div className="flex justify-between items-center gap-[4px]">

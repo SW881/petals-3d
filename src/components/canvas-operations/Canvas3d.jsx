@@ -2,9 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame, useThree, extend } from '@react-three/fiber'
 import {
-    GizmoHelper,
+    Stats,
     OrbitControls,
-    GizmoViewport,
     PerspectiveCamera,
     OrthographicCamera,
 } from '@react-three/drei'
@@ -15,7 +14,7 @@ extend(THREE)
 import { canvasViewStore } from '../../hooks/useCanvasViewStore'
 import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
 
-import CanvasOperations from './canvas/CanvasOperations'
+import CanvasOperations from '../canvas-operations/CanvasOperations'
 
 const Canvas3d = () => {
     const {
@@ -148,8 +147,7 @@ const Canvas3d = () => {
                 onDoubleClick={(e) => {
                     setSnaping(true)
                 }}
-                // onChange={(e) => camera.updateProjectionMatrix()}
-                dpr={1}
+                dpr={[1, 2]}
             >
                 <directionalLight
                     color={0xffffff}
@@ -177,7 +175,7 @@ const Canvas3d = () => {
                 ) : (
                     <PerspectiveCamera fov={cameraFov} />
                 )}
-
+                {/* <Stats className="ml-[400px]" /> */}
                 {snaping && <SnapCameraPositionAndRotation />}
 
                 {(gridPlaneX || gridPlaneY || gridPlaneZ) && (
@@ -222,13 +220,6 @@ const Canvas3d = () => {
                     minZoom={10}
                 />
                 <CanvasOperations />
-
-                {/* <GizmoHelper alignment="bottom-center" margin={[60, 60]}>
-                    <GizmoViewport
-                        axisColors={['#DE3163', '#50C878', '#0096FF']}
-                        labelColor="white"
-                    />
-                </GizmoHelper> */}
 
                 {sequentialLoading && (
                     <SequentialLoader

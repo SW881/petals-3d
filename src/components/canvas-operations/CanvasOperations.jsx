@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect } from 'react'
-import { useThree } from '@react-three/fiber'
+import React, { useEffect } from 'react'
 import * as THREE from 'three'
+import { useThree } from '@react-three/fiber'
 
-import { canvasDrawStore } from '../../../hooks/useCanvasDrawStore'
-import { canvasRenderStore } from '../../../hooks/useRenderSceneStore'
+import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
+import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
 
 import DrawLine from './DrawLine'
 import EraseLine from './EraseLine'
@@ -13,7 +13,9 @@ import TransformGuide from './TransformGuide'
 import DynamicGuidePlane from './DynamicGuidePlane'
 import DynamicBendGuidePlane from './DynamicBendGuidePlane'
 
-import { eraseLineType, guideObjectType } from '../../../config/objectsConfig'
+import { saveGroupToIndexDB } from '../../db/storage'
+import { generateScene } from '../../helpers/drawHelper'
+import { eraseLineType, guideObjectType } from '../../config/objectsConfig'
 
 export default function CanvasOperations() {
     const { scene, gl } = useThree()
@@ -36,12 +38,20 @@ export default function CanvasOperations() {
         setDynamicDrawingPlaneMesh,
     } = canvasDrawStore((state) => state)
 
-    const { setActiveScene, groupData } = canvasRenderStore((state) => state)
+    const { setActiveScene, setGroupData, groupData } = canvasRenderStore(
+        (state) => state
+    )
 
-    //  // Rebuild scene
-    // useEffect(() => {
-    //     generateScene(scene, groupData)
-    // }, [])
+    async function saveData() {
+        await saveGroupToIndexDB(canvasRenderStore.getState().groupData)
+    }
+
+    useEffect(() => {
+        let { newGeneratedGroups, newScene } = generateScene(scene, groupData)
+        setGroupData([...newGeneratedGroups])
+        setActiveScene(newScene)
+        saveData()
+    }, [])
 
     const handleGuideDrawingFinished = (guideMesh) => {
         setDrawGuide(false)

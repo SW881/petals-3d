@@ -27,7 +27,7 @@ const RangeSlider = (props) => {
             <div className="p-[12px] text-[8px] md:text-[12px] funnel-sans-regular">
                 {name ? name : ''}
             </div>
-            <div className="bg-[#000000] flex flex-col m-[4px] gesture-allowed">
+            <div className="bg-[#FFFFFF] flex flex-col m-[4px] gesture-allowed">
                 <div className="range-container">
                     <div className="range-wrapper">
                         <input
@@ -51,7 +51,8 @@ const RangeSlider = (props) => {
                 <div className="mt-[16px]">
                     <input
                         type="number"
-                        className="border border-[#E5E7EB] text-[#000000] rounded-[4px] block w-[72px] text-[8px] md:text-[12px]  px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                        className="border border-[#E5E7EB] rounded-[4px] block w-[72px] text-[8px] md:text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold 
+                            $text-[#000000]"
                         value={value}
                         disabled={true}
                     />

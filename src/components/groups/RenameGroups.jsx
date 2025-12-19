@@ -1,42 +1,47 @@
 import React, { useState } from 'react'
 
-import WrongButtonIcon from '../../../svg-icons/WrongButtonIcon'
+import WrongButtonIcon from '../svg-icons/WrongButtonIcon'
 
-import { saveGroupToIndexDB } from '../../../../db/storage'
-import { dashboardStore } from '../../../../hooks/useDashboardStore'
-import { canvasRenderStore } from '../../../../hooks/useRenderSceneStore'
+import { saveGroupToIndexDB } from '../../db/storage'
 
-const DeleteGroups = () => {
-    const { setDeleteGroupModal } = dashboardStore((state) => state)
-    const [animateOut, setAnimateOut] = useState(false)
-    const [groupName, setGroupName] = useState('')
+import { dashboardStore } from '../../hooks/useDashboardStore'
+import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
+
+const RenameGroups = () => {
     const [loading, setLoading] = useState(false)
+    const [groupName, setGroupName] = useState('')
+    const [animateOut, setAnimateOut] = useState(false)
 
-    const { resetSelectedGroups, deleteSelectedGroups, sortGroupsByName } =
+    const { setRenameGroupModal } = dashboardStore((state) => state)
+
+    const { updateGroupNamesFromSelected, resetSelectedGroups } =
         canvasRenderStore((state) => state)
 
     function handleClose() {
         setAnimateOut(true)
         setGroupName('')
         setTimeout(() => {
-            setDeleteGroupModal(false)
+            setRenameGroupModal(false)
             setAnimateOut(false)
-        }, 200) // matches animation duration
+        }, 200)
     }
 
-    async function handleDeleteGroups(e) {
+    function handleNameChange(e) {
+        setGroupName(e.target.value)
+    }
+
+    async function handleRenameGroup(e) {
         try {
             setLoading(true)
 
-            deleteSelectedGroups()
-            sortGroupsByName()
+            updateGroupNamesFromSelected(groupName)
 
-            const updatedGroupData = canvasRenderStore.getState().groupData
+            const updatedGroups = canvasRenderStore.getState().groupData
 
-            const response = await saveGroupToIndexDB(updatedGroupData)
-            resetSelectedGroups()
+            let response = await saveGroupToIndexDB(updatedGroups)
 
             if (response) {
+                resetSelectedGroups()
                 handleClose()
             } else {
                 setError('Error while saving data')
@@ -66,11 +71,11 @@ const DeleteGroups = () => {
                         >
                             <div className="flex justify-between items-center text-left text-[12px] md:text-[16px] p-[12px] m-[4px] border-b-[1px] border-[#D9D9D9] funnel-sans-semibold">
                                 <div className="text-[#000000]">
-                                    Delete Groups
+                                    Rename selected groups
                                 </div>
                                 <div
                                     onClick={(e) => handleClose(e)}
-                                    className="active:scale-90 p-[4px] rounded-[8px] cursor-pointer"
+                                    className="p-[4px] rounded-[8px] cursor-pointer"
                                 >
                                     <WrongButtonIcon
                                         color="#000000"
@@ -79,24 +84,33 @@ const DeleteGroups = () => {
                                 </div>
                             </div>
                             <div className="mx-[20px] mt-[12px]">
-                                <div className="mt-[16px] text-[12px] text-[#000000] text-left">
-                                    Are you sure you want to delete groups ?
+                                <div className="mt-[16px]">
+                                    <label className="text-left text-[12px] block funnel-sans-regular text-[#000000] mb-[8px]">
+                                        Name
+                                    </label>
+                                    <input
+                                        onChange={(e) => handleNameChange(e)}
+                                        type="text"
+                                        className="border-[1px] border-[#d9d9d9] text-[#000000] rounded-[8px] block w-full text-[12px] px-[12px] py-[8px] focus:outline-0 funnel-sans-semibold"
+                                        required
+                                        disabled={loading}
+                                    />
                                 </div>
                             </div>
                             <div className="mt-[12px] flex justify-end items-center px-4 py-3 gap-[12px]">
                                 <button
                                     onClick={(e) => handleClose(e)}
-                                    className="active:scale-90 text-[#000000] border-[#D9D9D9] border-[1px] px-[12px] py-[4px] rounded-[8px] cursor-pointer"
+                                    className="text-[#000000] border-[#d9d9d9] border-[1px] px-[20px] py-[4px] rounded-[8px] cursor-pointer"
                                 >
                                     Cancel
                                 </button>
 
                                 <button
                                     disabled={loading}
-                                    onClick={(e) => handleDeleteGroups(e)}
-                                    className="text-[#000000] active:scale-90 px-[12px] py-[4px] rounded-[8px] bg-[#7f2315]/25 border-[1px] border-[#7f2315] cursor-pointer"
+                                    onClick={(e) => handleRenameGroup(e)}
+                                    className="text-[#000000] px-[16px] py-[4px] rounded-[8px] border-[#5CA367] bg-[#5CA367]/25 border-[1px] cursor-pointer"
                                 >
-                                    Delete
+                                    Rename
                                 </button>
                             </div>
                         </div>
@@ -107,4 +121,4 @@ const DeleteGroups = () => {
     )
 }
 
-export default DeleteGroups
+export default RenameGroups
