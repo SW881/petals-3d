@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
+import { toast } from 'react-toastify'
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 
 import Canvas3d from './Canvas3d'
@@ -19,19 +20,20 @@ import { dashboardStore } from '../../hooks/useDashboardStore'
 import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
 import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
 
-import ToolTip from '../ToolTip'
 import CopyGroups from '../groups/CopyGroups'
 import AddNewGroups from '../groups/AddNewGroups'
 import RenameGroups from '../groups/RenameGroups'
 import DeleteGroups from '../groups/DeleteGroups'
 
+import ToolTip from '../ToolTip'
+import { Fade } from '../../config/objectsConfig'
 import { loadSceneFromIndexedDB, saveGroupToIndexDB } from '../../db/storage'
 
-const Editor = (props) => {
+const Editor = () => {
     const [error, setError] = useState(false)
     const [loading, setLoading] = useState(false)
     const [isSmall, setIsSmall] = useState(window.innerWidth < 768)
-    const [showOptions, setShowOptions] = useState(false)
+    const [showOptions, setShowOptions] = useState(true)
 
     const { sceneOptions } = canvasRenderStore((state) => state)
 
@@ -49,6 +51,29 @@ const Editor = (props) => {
     )
     const { addNewGroup, activeScene, setGroupData, setActiveGroup } =
         canvasRenderStore((state) => state)
+
+    useEffect(() => {
+        toast.info(`Select Pointer type first!`, {
+            position: 'top-center',
+            autoClose: false,
+            hideProgressBar: true,
+            closeOnClick: false,
+            pauseOnHover: false,
+            draggable: false,
+            progress: undefined,
+            theme: 'light',
+            transition: Fade,
+        })
+
+        const onFirstPointerDown = (e) => {
+            setPointerType(e.pointerType)
+            window.removeEventListener('pointerdown', onFirstPointerDown, true)
+        }
+
+        window.addEventListener('pointerdown', onFirstPointerDown, true)
+        return () =>
+            window.removeEventListener('pointerdown', onFirstPointerDown, true)
+    }, [setPointerType])
 
     useEffect(() => {
         if (hasRun.current) return
