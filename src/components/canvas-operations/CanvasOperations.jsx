@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import * as THREE from 'three'
 import { useThree } from '@react-three/fiber'
 
+import { canvasViewStore } from '../../hooks/useCanvasViewStore'
 import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
 import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
 
@@ -27,6 +28,7 @@ export default function CanvasOperations() {
         selectGuide,
         highlighted,
         setDrawGuide,
+        setPenActive,
         setEraseGuide,
         bendPlaneGuide,
         setHighlighted,
@@ -41,6 +43,8 @@ export default function CanvasOperations() {
     const { setActiveScene, setGroupData, groupData } = canvasRenderStore(
         (state) => state
     )
+
+    const { setOrbitalLock } = canvasViewStore((state) => state)
 
     async function saveData() {
         await saveGroupToIndexDB(canvasRenderStore.getState().groupData)
@@ -67,6 +71,8 @@ export default function CanvasOperations() {
         }
         setDynamicDrawingPlaneMesh(guideMesh)
         setPlane(guideMesh)
+        setPenActive(true)
+        setOrbitalLock(true)
     }
 
     useEffect(() => {
