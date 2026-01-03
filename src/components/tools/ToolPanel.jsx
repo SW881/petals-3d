@@ -9,6 +9,7 @@ import EraserIcon from '../svg-icons/EraserIcon'
 import RotateIcon from '../svg-icons/RotateIcon'
 import RenderIcon from '../svg-icons/RenderIcon'
 import CircleIcon from '../svg-icons/CircleIcon'
+import SelectGuide from '../svg-icons/SelectGuide'
 import CorrectIcon from '../svg-icons/CorrectIcon'
 import FreeHandIcon from '../svg-icons/FreeHandIcon'
 import LocalModeIcon from '../svg-icons/LocalModeIcon'
@@ -421,7 +422,7 @@ const ToolPanel = (props) => {
                             <ToolButton
                                 condition={selectGuide}
                                 icon={
-                                    <LoftGuideIcon
+                                    <SelectGuide
                                         color="#000000"
                                         size={isSmall ? 12 : 20}
                                     />
@@ -568,95 +569,112 @@ const ToolPanel = (props) => {
 
             {(drawGuide || bendPlaneGuide) && (
                 <div className="absolute top-[72px] left-[12px] z-5 p-[4px] flex flex-col justify-center rounded-[8px] border-[1px] border-[#4B5563]/25 drop-shadow-xl bg-[#FFFFFF]">
-                    <button
-                        onClick={(e) => handleShapeOptions(e)}
-                        className="hover:bg-[#5CA367]/25 font-bold p-[8px] cursor-pointer rounded-[4px]"
-                    >
-                        {drawShapeType === 'free_hand' && (
-                            <FreeHandIcon
-                                color="#000000"
-                                size={isSmall ? 12 : 20}
-                            />
-                        )}
-                        {drawShapeType === 'straight' && (
-                            <StraightLineIcon
-                                color="#000000"
-                                size={isSmall ? 12 : 20}
-                            />
-                        )}
-                        {drawShapeType === 'circle' && (
-                            <CircleIcon
-                                color="#000000"
-                                size={isSmall ? 12 : 20}
-                            />
-                        )}
+                    <ToolTip text="Draw Shape" position="right" delay={100}>
+                        <button
+                            onClick={(e) => handleShapeOptions(e)}
+                            className="hover:bg-[#5CA367]/25 font-bold p-[8px] cursor-pointer rounded-[4px]"
+                        >
+                            {drawShapeType === 'free_hand' && (
+                                <FreeHandIcon
+                                    color="#000000"
+                                    size={isSmall ? 12 : 20}
+                                />
+                            )}
+                            {drawShapeType === 'straight' && (
+                                <StraightLineIcon
+                                    color="#000000"
+                                    size={isSmall ? 12 : 20}
+                                />
+                            )}
+                            {drawShapeType === 'circle' && (
+                                <CircleIcon
+                                    color="#000000"
+                                    size={isSmall ? 12 : 20}
+                                />
+                            )}
 
-                        {drawShapeType === 'arc' && (
-                            <ArcIcon color="#000000" size={isSmall ? 12 : 20} />
-                        )}
-                    </button>
+                            {drawShapeType === 'arc' && (
+                                <ArcIcon
+                                    color="#000000"
+                                    size={isSmall ? 12 : 20}
+                                />
+                            )}
+                        </button>
+                    </ToolTip>
                 </div>
             )}
 
             {(drawGuide || bendPlaneGuide) && openDrawShapeOptions && (
                 <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[8px] bg-[#FFFFFF] border-[1px] border-[#4B5563]/25 drop-shadow-xl bg-[#000000]">
-                    <div
-                        onClick={(e) =>
-                            handleShape('free_hand', setDrawShapeType)
-                        }
-                    >
-                        <ToolButton
-                            condition={false}
-                            icon={
-                                <FreeHandIcon
-                                    color="#000000"
-                                    size={isSmall ? 12 : 20}
-                                />
+                    <ToolTip text="Free hand" position="right" delay={100}>
+                        <div
+                            onClick={(e) =>
+                                handleShape('free_hand', setDrawShapeType)
                             }
-                        />
-                    </div>
+                        >
+                            <ToolButton
+                                condition={false}
+                                icon={
+                                    <FreeHandIcon
+                                        color="#000000"
+                                        size={isSmall ? 12 : 20}
+                                    />
+                                }
+                            />
+                        </div>
+                    </ToolTip>
 
-                    <div
-                        onClick={(e) =>
-                            handleShape('straight', setDrawShapeType)
-                        }
-                    >
-                        <ToolButton
-                            condition={false}
-                            icon={
-                                <StraightLineIcon
-                                    color="#000000"
-                                    size={isSmall ? 12 : 20}
-                                />
+                    <ToolTip text="Straight" position="right" delay={100}>
+                        <div
+                            onClick={(e) =>
+                                handleShape('straight', setDrawShapeType)
                             }
-                        />
-                    </div>
-
-                    <div
-                        onClick={(e) => handleShape('circle', setDrawShapeType)}
-                    >
-                        <ToolButton
-                            condition={false}
-                            icon={
-                                <CircleIcon
-                                    color="#000000"
-                                    size={isSmall ? 12 : 20}
-                                />
+                        >
+                            <ToolButton
+                                condition={false}
+                                icon={
+                                    <StraightLineIcon
+                                        color="#000000"
+                                        size={isSmall ? 12 : 20}
+                                    />
+                                }
+                            />
+                        </div>
+                    </ToolTip>
+                    <ToolTip text="Circle" position="right" delay={100}>
+                        <div
+                            onClick={(e) =>
+                                handleShape('circle', setDrawShapeType)
                             }
-                        />
-                    </div>
-
-                    <div onClick={(e) => handleShape('arc', setDrawShapeType)}>
-                        <ToolButton
-                            condition={false}
-                            icon={
-                                <ArcIcon
-                                    color="#000000"
-                                    size={isSmall ? 12 : 20}
-                                />
+                        >
+                            <ToolButton
+                                condition={false}
+                                icon={
+                                    <CircleIcon
+                                        color="#000000"
+                                        size={isSmall ? 12 : 20}
+                                    />
+                                }
+                            />
+                        </div>
+                    </ToolTip>
+                    <ToolTip text="Arc" position="right" delay={100}>
+                        <div
+                            onClick={(e) =>
+                                handleShape('arc', setDrawShapeType)
                             }
-                        />
-                    </div>
+                        >
+                            <ToolButton
+                                condition={false}
+                                icon={
+                                    <ArcIcon
+                                        color="#000000"
+                                        size={isSmall ? 12 : 20}
+                                    />
+                                }
+                            />
+                        </div>
+                    </ToolTip>
                 </div>
             )}
 

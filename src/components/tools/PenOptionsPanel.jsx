@@ -291,31 +291,43 @@ const PenOptionsPanel = ({ isSmall }) => {
                     </ToolTip>
 
                     {pressureMode && (
-                        <div onClick={(e) => setPressureMode(false)}>
-                            <ToolButton
-                                condition={false}
-                                icon={
-                                    <PressureActiveIcon
-                                        color="#000000"
-                                        size={isSmall ? 12 : 20}
-                                    />
-                                }
-                            />
-                        </div>
+                        <ToolTip
+                            text="Pressure On"
+                            position="right"
+                            delay={100}
+                        >
+                            <div onClick={(e) => setPressureMode(false)}>
+                                <ToolButton
+                                    condition={false}
+                                    icon={
+                                        <PressureActiveIcon
+                                            color="#000000"
+                                            size={isSmall ? 12 : 20}
+                                        />
+                                    }
+                                />
+                            </div>
+                        </ToolTip>
                     )}
 
                     {!pressureMode && (
-                        <div onClick={(e) => setPressureMode(true)}>
-                            <ToolButton
-                                condition={false}
-                                icon={
-                                    <PressureInActiveIcon
-                                        color="#000000"
-                                        size={isSmall ? 12 : 20}
-                                    />
-                                }
-                            />
-                        </div>
+                        <ToolTip
+                            text="Pressure Off"
+                            position="right"
+                            delay={100}
+                        >
+                            <div onClick={(e) => setPressureMode(true)}>
+                                <ToolButton
+                                    condition={false}
+                                    icon={
+                                        <PressureInActiveIcon
+                                            color="#000000"
+                                            size={isSmall ? 12 : 20}
+                                        />
+                                    }
+                                />
+                            </div>
+                        </ToolTip>
                     )}
 
                     <ToolTip text="Mirror" position="right" delay={100}>
@@ -384,115 +396,149 @@ const PenOptionsPanel = ({ isSmall }) => {
 
             {penActive && openStrokeOptions && (
                 <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[8px] bg-[#FFFFFF] border-[1px] border-[#4B5563]/25 drop-shadow-xl">
-                    <div onClick={(e) => handleStroke('taper', setStrokeType)}>
-                        <ToolButton
-                            condition={strokeType === 'taper'}
-                            icon={
-                                <TaperStrokeIcon
-                                    color={strokeColor}
-                                    size={isSmall ? 12 : 20}
-                                />
+                    <ToolTip text="Taper" position="right" delay={100}>
+                        <div
+                            onClick={(e) =>
+                                handleStroke('taper', setStrokeType)
                             }
-                        />
-                    </div>
+                        >
+                            <ToolButton
+                                condition={strokeType === 'taper'}
+                                icon={
+                                    <TaperStrokeIcon
+                                        color={strokeColor}
+                                        size={isSmall ? 12 : 20}
+                                    />
+                                }
+                            />
+                        </div>
+                    </ToolTip>
 
-                    <div onClick={(e) => handleStroke('cube', setStrokeType)}>
-                        <ToolButton
-                            condition={strokeType === 'cube'}
-                            icon={
-                                <CubeStrokeIcon
-                                    color={strokeColor}
-                                    size={isSmall ? 12 : 20}
-                                />
-                            }
-                        />
-                    </div>
+                    <ToolTip text="Cube" position="right" delay={100}>
+                        <div
+                            onClick={(e) => handleStroke('cube', setStrokeType)}
+                        >
+                            <ToolButton
+                                condition={strokeType === 'cube'}
+                                icon={
+                                    <CubeStrokeIcon
+                                        color={strokeColor}
+                                        size={isSmall ? 12 : 20}
+                                    />
+                                }
+                            />
+                        </div>
+                    </ToolTip>
 
-                    <div onClick={(e) => handleStroke('paint', setStrokeType)}>
-                        <ToolButton
-                            condition={strokeType === 'paint'}
-                            icon={
-                                <PaintStrokeIcon
-                                    color={strokeColor}
-                                    size={isSmall ? 12 : 20}
-                                />
+                    <ToolTip text="Paint" position="right" delay={100}>
+                        <div
+                            onClick={(e) =>
+                                handleStroke('paint', setStrokeType)
                             }
-                        />
-                    </div>
+                        >
+                            <ToolButton
+                                condition={strokeType === 'paint'}
+                                icon={
+                                    <PaintStrokeIcon
+                                        color={strokeColor}
+                                        size={isSmall ? 12 : 20}
+                                    />
+                                }
+                            />
+                        </div>
+                    </ToolTip>
 
-                    <div onClick={(e) => handleStroke('belt', setStrokeType)}>
-                        <ToolButton
-                            condition={strokeType === 'belt'}
-                            icon={
-                                <BeltStrokeIcon
-                                    color={strokeColor}
-                                    size={isSmall ? 12 : 20}
-                                />
-                            }
-                        />
-                    </div>
+                    <ToolTip text="Belt" position="right" delay={100}>
+                        <div
+                            onClick={(e) => handleStroke('belt', setStrokeType)}
+                        >
+                            <ToolButton
+                                condition={strokeType === 'belt'}
+                                icon={
+                                    <BeltStrokeIcon
+                                        color={strokeColor}
+                                        size={isSmall ? 12 : 20}
+                                    />
+                                }
+                            />
+                        </div>
+                    </ToolTip>
                 </div>
             )}
 
             {penActive && openDrawShapeOptions && (
                 <div className="absolute flex flex-col justify-items-center gap-[4px] top-[72px] left-[72px] z-5 p-[4px] rounded-[8px] bg-[#FFFFFF] border-[1px] border-[#4B5563]/25 drop-shadow-xl">
-                    <div
-                        onClick={(e) =>
-                            handleShape('free_hand', setDrawShapeType)
-                        }
-                    >
-                        <ToolButton
-                            condition={drawShapeType === 'free_hand'}
-                            icon={
-                                <FreeHandIcon
-                                    color="#000000"
-                                    size={isSmall ? 12 : 20}
-                                />
+                    <ToolTip text="Free hand" position="right" delay={100}>
+                        <div
+                            onClick={(e) =>
+                                handleShape('free_hand', setDrawShapeType)
                             }
-                        />
-                    </div>
+                        >
+                            <ToolButton
+                                condition={drawShapeType === 'free_hand'}
+                                icon={
+                                    <FreeHandIcon
+                                        color="#000000"
+                                        size={isSmall ? 12 : 20}
+                                    />
+                                }
+                            />
+                        </div>
+                    </ToolTip>
 
-                    <div
-                        onClick={(e) =>
-                            handleShape('straight', setDrawShapeType)
-                        }
-                    >
-                        <ToolButton
-                            condition={drawShapeType === 'straight'}
-                            icon={
-                                <FreeHandIcon
-                                    color="#000000"
-                                    size={isSmall ? 12 : 20}
-                                />
+                    <ToolTip text="Straight" position="right" delay={100}>
+                        <div
+                            onClick={(e) =>
+                                handleShape('straight', setDrawShapeType)
                             }
-                        />
-                    </div>
+                        >
+                            <ToolButton
+                                condition={drawShapeType === 'straight'}
+                                icon={
+                                    <StraightLineIcon
+                                        color="#000000"
+                                        size={isSmall ? 12 : 20}
+                                    />
+                                }
+                            />
+                        </div>
+                    </ToolTip>
 
-                    <div
-                        onClick={(e) => handleShape('circle', setDrawShapeType)}
-                    >
-                        <ToolButton
-                            condition={drawShapeType === 'circle'}
-                            icon={
-                                <CircleIcon
-                                    color="#000000"
-                                    size={isSmall ? 12 : 20}
-                                />
+                    <ToolTip text="Circle" position="right" delay={100}>
+                        <div
+                            onClick={(e) =>
+                                handleShape('circle', setDrawShapeType)
                             }
-                        />
-                    </div>
+                        >
+                            <ToolButton
+                                condition={drawShapeType === 'circle'}
+                                icon={
+                                    <CircleIcon
+                                        color="#000000"
+                                        size={isSmall ? 12 : 20}
+                                    />
+                                }
+                            />
+                        </div>
+                    </ToolTip>
 
-                    <div onClick={(e) => handleShape('arc', setDrawShapeType)}>
-                        <ToolButton
-                            condition={drawShapeType === 'arc'}
-                            icon={
-                                <ArcIcon
-                                    color="#000000"
-                                    size={isSmall ? 12 : 20}
-                                />
+                    <ToolTip text="Arc" position="right" delay={100}>
+                        <div
+                            onClick={(e) =>
+                                handleShape('arc', setDrawShapeType)
                             }
-                        />
-                    </div>
+                        >
+                            <ToolButton
+                                condition={drawShapeType === 'arc'}
+                                icon={
+                                    <ArcIcon
+                                        color="#000000"
+                                        size={isSmall ? 12 : 20}
+                                    />
+                                }
+                            />
+                        </div>
+                    </ToolTip>
                 </div>
             )}
 
