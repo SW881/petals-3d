@@ -18,6 +18,7 @@ import BurgerIcon from '../svg-icons/BurgerIcon'
 
 import { dashboardStore } from '../../hooks/useDashboardStore'
 import { canvasDrawStore } from '../../hooks/useCanvasDrawStore'
+import { canvasViewStore } from '../../hooks/useCanvasViewStore'
 import { canvasRenderStore } from '../../hooks/useRenderSceneStore'
 
 import CopyGroups from '../groups/CopyGroups'
@@ -46,11 +47,11 @@ const Editor = () => {
 
     const hasRun = useRef(false)
 
-    const { setNotesData, pointerType, setPointerType } = canvasDrawStore(
-        (state) => state
-    )
+    const { setNotesData, pointerType, setPointerType, setDrawGuide } =
+        canvasDrawStore((state) => state)
     const { addNewGroup, activeScene, setGroupData, setActiveGroup } =
         canvasRenderStore((state) => state)
+    const { setOrbitalLock } = canvasViewStore((state) => state)
 
     useEffect(() => {
         toast.info(`Select Pointer type first!`, {
@@ -67,6 +68,8 @@ const Editor = () => {
 
         const onFirstPointerDown = (e) => {
             setPointerType(e.pointerType)
+            setDrawGuide(true)
+            setOrbitalLock(true)
             window.removeEventListener('pointerdown', onFirstPointerDown, true)
         }
 

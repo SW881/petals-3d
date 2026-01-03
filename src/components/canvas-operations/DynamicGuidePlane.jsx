@@ -614,7 +614,7 @@ const DynamicGuidePlane = ({ onDrawingFinished }) => {
             }
         }
 
-        setOrbitalLock(false)
+        // setOrbitalLock(false)
         currentMesh = null
         startPoint = null
         currentNormal = null

@@ -1,7 +1,7 @@
 import React from 'react'
 
 const ToolButton = (props) => {
-    const { icon, condition, bg, hoverBg } = props
+    const { icon, condition } = props
 
     return (
         <>

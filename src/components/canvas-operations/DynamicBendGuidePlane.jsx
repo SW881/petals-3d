@@ -521,7 +521,7 @@ const DynamicBendGuidePlane = ({ onDrawingFinished }) => {
             }
         }
 
-        setOrbitalLock(false)
+        // setOrbitalLock(false)
         currentMesh = null
         startPoint = null
         currentNormal = null
